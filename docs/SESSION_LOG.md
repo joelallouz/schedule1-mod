@@ -351,8 +351,48 @@ All exit criteria met:
 - ✅ Reassignment API known (Dealer.AddCustomer, RemoveCustomer, Customer.AssignDealer)
 - ✅ IsRecruited distinguishes recruited vs unrecruited dealers
 
+### Phase 2 Work Started (same session)
+
+After Phase 1 completion, began Phase 2 implementation:
+
+**Domain models created:**
+- `src/Domain/CustomerInfo.cs` — FullName, NpcId, AssignedDealerName, IsPlayerAssigned, CurrentAddiction, MinWeeklySpend, MaxWeeklySpend, Standards
+- `src/Domain/DealerInfo.cs` — FullName, IsRecruited, AssignedCustomerCount, Cash, Cut, DealerType
+
+**GameDataService created (`src/Services/GameDataService.cs`):**
+- Wraps all reflection access into clean domain objects
+- Caches type/property lookups (resolved once, reused)
+- Caches query results with 5s TTL for IMGUI performance
+- `GetAllCustomers()`, `GetAllDealers()`, `InvalidateCache()`
+- Customer mapping: NPC → fullName/ID, AssignedDealer, CurrentAddiction, CustomerData → spend/standards
+
+**IMGUI Panel created (`src/UI/CustomerPanelUI.cs`):**
+- Toggle with F9, refresh with F10
+- Centered dark panel, 700x500
+- Summary header: customer counts (player/dealer), dealer count
+- Scrollable table with columns: Name, Assignment, Addiction, Min$, Max$, Standards
+- Click column headers to sort (ascending/descending toggle)
+- Default sort: Max Spend descending (shows high-value customers first)
+- Color coding: green = player-assigned, white = dealer-assigned
+
+**ModEntry updated:**
+- `OnUpdate()`: F9 hotkey toggle, F10 refresh, existing delay timer
+- `OnGUI()`: draws CustomerPanelUI
+- Tracks `_inMainScene` to only enable hotkeys in gameplay
+
+**Build infrastructure:**
+- Added UnityEngine.CoreModule, IMGUIModule, InputLegacyModule references to .csproj
+- User copied DLLs from Windows `<GameDir>/MelonLoader/Il2CppAssemblies/` to `libs/`
+- Placeholder files removed from Domain/, Services/, UI/, Patches/
+
+**Build: SUCCEEDS** — 0 warnings, 0 errors.
+
+**NOT YET TESTED AT RUNTIME** — DLL needs to be deployed and tested in-game.
+
 ### Next Steps (for Session 4)
-1. Begin Phase 2: Read-Only Client View
-2. Create domain models in src/Domain/
-3. Create GameDataService in src/Services/ wrapping reflection access
-4. Preferences still untested but should work same as other CustomerData fields
+1. Copy `bin/Debug/net6.0/ClientAssignmentOptimizer.dll` to Windows `<GameDir>\Mods\`
+2. Launch game, load save, press F9 — verify panel appears with customer data
+3. Test sorting (click column headers), verify refresh (F10)
+4. If IMGUI doesn't render (IL2CPP proxy issues), debug and iterate
+5. If panel works: mark Phase 2 roadmap items, add preferences column
+6. Preferences still untested but should work same as other CustomerData fields

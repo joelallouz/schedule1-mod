@@ -43,15 +43,15 @@
 
 ---
 
-## Phase 2: Read-Only Client View
+## Phase 2: Read-Only Client View (Current)
 
 **Goal:** Display a list of all clients with their key stats. No mutation.
 
-- [ ] Domain models mirroring discovered game structures
-- [ ] Service to enumerate customers and read their properties
-- [ ] Basic UI panel (UnityEngine.GUI or IMGUI)
-- [ ] Display: name, assignment, weekly spend, addiction, preferences
-- [ ] Toggle panel with a hotkey
+- [x] Domain models mirroring discovered game structures *(Session 3: CustomerInfo, DealerInfo)*
+- [x] Service to enumerate customers and read their properties *(Session 3: GameDataService with cached reflection)*
+- [x] Basic UI panel (UnityEngine.GUI or IMGUI) *(Session 3: CustomerPanelUI — written, not yet tested at runtime)*
+- [ ] Display: name, assignment, weekly spend, addiction, preferences *(name/assignment/spend/addiction done, preferences not yet)*
+- [x] Toggle panel with a hotkey *(Session 3: F9 toggle, F10 refresh)*
 
 **Exit criteria:** Player can press a key and see a list of all customers with correct data.
 

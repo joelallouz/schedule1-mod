@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using MelonLoader;
+using UnityEngine;
 using ClientAssignmentOptimizer.Discovery;
+using ClientAssignmentOptimizer.UI;
 
 [assembly: MelonInfo(typeof(ClientAssignmentOptimizer.Core.ModEntry), "Client Assignment Optimizer", "0.1.0", "joelallouz")]
 [assembly: MelonGame("TVGS", "Schedule I")]
@@ -11,6 +13,7 @@ namespace ClientAssignmentOptimizer.Core
     {
         private bool _runtimeVerificationDone = false;
         private Stopwatch _mainSceneTimer;
+        private bool _inMainScene = false;
 
         private const double VerificationDelaySeconds = 10.0;
 
@@ -28,17 +31,16 @@ namespace ClientAssignmentOptimizer.Core
                 DiscoveryOrchestrator.Run();
             }
 
-            ModLogger.Info("Initialization complete.");
+            ModLogger.Info("Initialization complete. Press F9 in-game to open customer panel.");
         }
 
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
         {
             ModLogger.Info($"Scene loaded: '{sceneName}' (index {buildIndex})");
 
-            if (_runtimeVerificationDone || !ModConfig.DiscoveryEnabled)
-                return;
+            _inMainScene = sceneName == "Main";
 
-            if (sceneName == "Main")
+            if (_inMainScene && !_runtimeVerificationDone && ModConfig.DiscoveryEnabled)
             {
                 _mainSceneTimer = Stopwatch.StartNew();
                 ModLogger.Info($"Main scene detected — runtime verification will run in {VerificationDelaySeconds}s");
@@ -47,20 +49,40 @@ namespace ClientAssignmentOptimizer.Core
 
         public override void OnUpdate()
         {
-            if (_mainSceneTimer == null || _runtimeVerificationDone)
-                return;
-
-            if (_mainSceneTimer.Elapsed.TotalSeconds >= VerificationDelaySeconds)
+            // Delayed runtime verification
+            if (_mainSceneTimer != null && !_runtimeVerificationDone)
             {
-                _mainSceneTimer = null;
-                ModLogger.Info($"Delay elapsed — running runtime verification now.");
-                _runtimeVerificationDone = DiscoveryOrchestrator.RunRuntimeVerification();
-
-                if (!_runtimeVerificationDone)
+                if (_mainSceneTimer.Elapsed.TotalSeconds >= VerificationDelaySeconds)
                 {
-                    ModLogger.Warning("Runtime verification found no data after delay.");
+                    _mainSceneTimer = null;
+                    ModLogger.Info("Delay elapsed — running runtime verification now.");
+                    _runtimeVerificationDone = DiscoveryOrchestrator.RunRuntimeVerification();
+
+                    if (!_runtimeVerificationDone)
+                    {
+                        ModLogger.Warning("Runtime verification found no data after delay.");
+                    }
                 }
             }
+
+            // Hotkey: F9 toggles panel
+            if (_inMainScene && Input.GetKeyDown(KeyCode.F9))
+            {
+                CustomerPanelUI.Toggle();
+                ModLogger.Info($"Customer panel: {(CustomerPanelUI.Visible ? "OPEN" : "CLOSED")}");
+            }
+
+            // Hotkey: F10 refreshes data while panel is open
+            if (_inMainScene && CustomerPanelUI.Visible && Input.GetKeyDown(KeyCode.F10))
+            {
+                CustomerPanelUI.Refresh();
+                ModLogger.Info("Customer panel data refreshed.");
+            }
+        }
+
+        public override void OnGUI()
+        {
+            CustomerPanelUI.Draw();
         }
     }
 }

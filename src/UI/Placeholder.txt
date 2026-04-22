@@ -1,2 +1,0 @@
-This folder will contain UI components (e.g., client list panel, reassignment controls).
-Not yet implemented — waiting on discovery findings and core feature work.

@@ -1,2 +1,0 @@
-This folder will contain domain models (e.g., client data, assignment state).
-Not yet implemented — waiting on discovery findings.

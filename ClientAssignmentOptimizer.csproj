@@ -38,6 +38,23 @@
       <HintPath Condition="!Exists('$(LibsDir)/Il2CppInterop.Runtime.dll')">$(GameDir)/MelonLoader/net6/Il2CppInterop.Runtime.dll</HintPath>
       <Private>false</Private>
     </Reference>
+
+    <!-- UnityEngine modules for IMGUI and input -->
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath Condition="Exists('$(LibsDir)/UnityEngine.CoreModule.dll')">$(LibsDir)/UnityEngine.CoreModule.dll</HintPath>
+      <HintPath Condition="!Exists('$(LibsDir)/UnityEngine.CoreModule.dll')">$(GameDir)/MelonLoader/Il2CppAssemblies/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath Condition="Exists('$(LibsDir)/UnityEngine.IMGUIModule.dll')">$(LibsDir)/UnityEngine.IMGUIModule.dll</HintPath>
+      <HintPath Condition="!Exists('$(LibsDir)/UnityEngine.IMGUIModule.dll')">$(GameDir)/MelonLoader/Il2CppAssemblies/UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath Condition="Exists('$(LibsDir)/UnityEngine.InputLegacyModule.dll')">$(LibsDir)/UnityEngine.InputLegacyModule.dll</HintPath>
+      <HintPath Condition="!Exists('$(LibsDir)/UnityEngine.InputLegacyModule.dll')">$(GameDir)/MelonLoader/Il2CppAssemblies/UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Source files -->

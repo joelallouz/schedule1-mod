@@ -1,2 +1,0 @@
-This folder will contain service classes (e.g., client lookup, assignment logic).
-Not yet implemented — waiting on discovery findings.

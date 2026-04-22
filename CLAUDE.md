@@ -8,7 +8,7 @@ A MelonLoader mod for **Schedule I** (Unity IL2CPP, v0.4.5f2, Unity 2022.3.62f2)
 
 ## Current Phase
 
-**Phase 1: Discovery — COMPLETE** (2026-04-22). All game classes mapped, runtime access verified, reassignment API found. Ready for Phase 2.
+**Phase 2: Read-Only Client View (in progress)** — Domain models, GameDataService, and IMGUI panel written. Builds clean. Not yet tested at runtime. Next: deploy DLL and test F9 panel in-game.
 
 ## Key Game Classes (Confirmed)
 
