@@ -32,10 +32,10 @@
 - [x] **Determine how to enumerate all customers** → `Customer.UnlockedCustomers` (static list)
 - [x] **Determine how to enumerate all dealers** → `Dealer.AllPlayerDealers` (static list)
 - [x] Document all findings in FINDINGS.md
-- [ ] **Verify runtime access** — can we actually read these properties from mod code? *(Session 3: code written, awaiting log results)*
-- [ ] **Identify assignment/reassignment API** — find the method to move a customer between dealers *(Session 3: method search written, awaiting log results)*
-- [ ] **Dump NPC base class** — get display name, ID fields *(Session 3: dump written, awaiting log results)*
-- [ ] **Verify null-dealer = player-assigned hypothesis** *(Session 3: runtime check written, awaiting log results)*
+- [x] **Verify runtime access** — YES: static lists readable via reflection, Il2CppSystem.Collections.Generic.List with working Count/indexer (Session 3)
+- [x] **Identify assignment/reassignment API** — `Dealer.AddCustomer(Customer)`, `Dealer.RemoveCustomer(Customer)`, `Customer.AssignDealer(Dealer)` (Session 3)
+- [x] **Dump NPC base class** — `fullName`, `FirstName`, `LastName`, `ID`, `GUID` all found (Session 3)
+- [ ] **Verify null-dealer = player-assigned hypothesis** — needs runtime check on loaded save with actual customers (Session 3 ran on Menu scene only)
 
 **Exit criteria:** We can read customer name, assignment, spend, addiction, and preferences from mod code at runtime. We know the reassignment method.
 

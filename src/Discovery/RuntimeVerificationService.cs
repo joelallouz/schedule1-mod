@@ -46,7 +46,19 @@ namespace ClientAssignmentOptimizer.Discovery
                 return false;
             }
 
-            // Data is accessible — run full verification
+            // Check if any data is actually populated (lists exist but may be empty on Menu scene)
+            var dealerList = ReadStaticProperty(dealerType, "AllPlayerDealers");
+            int customerCount = GetListCount(unlockedList);
+            int dealerCount = dealerList != null ? GetListCount(dealerList) : 0;
+
+            if (customerCount <= 0 && dealerCount <= 0)
+            {
+                ModLogger.Info($"Lists accessible but empty (customers: {customerCount}, dealers: {dealerCount}) — likely Menu scene, will retry.");
+                ModLogger.Info("=== Runtime Verification: DEFERRED (no data yet) ===");
+                return false;
+            }
+
+            // Data is populated — run full verification
             VerifyCustomers(customerType, unlockedList);
             VerifyDealers(dealerType);
 

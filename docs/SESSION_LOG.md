@@ -242,13 +242,50 @@ Human ran the mod and returned full MelonLoader log. Results:
 - `OnSceneWasLoaded` might fire before data is populated — the retry mechanism handles this
 - We don't know scene names yet — logging them will fill that gap
 
+### Log Analysis (Session 3, first run)
+
+Human ran the mod and returned log `26-4-22_17-53-47.log`. All three new sections produced output.
+
+**NPC Base Class Dump — SUCCESS:**
+- Full inheritance chain: NPC → NetworkBehaviour → MonoBehaviour → ... → Il2CppObjectBase
+- 207 public properties
+- Name/ID fields found: `FirstName`, `LastName`, `hasLastName`, `fullName`, `ID`, `GUID`, `BakedGUID`, `name`, `SaveFolderName`
+- Other useful: `NPCRelationData RelationData`, `EMapRegion Region`, `Sprite MugshotSprite`
+
+**Assignment Method Search — SUCCESS:**
+- **Dealer (44 matches):** `AddCustomer(Customer)`, `RemoveCustomer(Customer)`, `RemoveCustomer(String npcID)`, `SendRemoveCustomer(String npcID)`, plus network RPC variants (`AddCustomer_Server`, `AddCustomer_Client`)
+- **Customer (56 matches):** `AssignDealer(Dealer)`, `get_AssignedDealer()`, `set_AssignedDealer(Dealer)`, `GetCustomerData()`, plus getters/setters for all key fields
+- Full reassignment API surface is now known
+
+**Runtime Verification — PARTIAL (bug: ran on Menu scene):**
+- Types found and accessible: ✓
+- Static property reading works: ✓
+- List type confirmed: `Il2CppSystem.Collections.Generic.List<T>`
+- `Dealer.MAX_CUSTOMERS` = 10 (read successfully)
+- **Bug:** Lists were non-null but empty (0 customers, 0 dealers) on Menu scene. Code returned `true` (marking verification done) because lists were accessible. Never retried on Main scene where save data lives.
+
+**Scene lifecycle observed:** Menu (0) → Main (1) → Menu (0) × 3 on exit
+
+**Bug fix applied:** `RuntimeVerificationService.Verify()` now returns false when both lists are empty, so it retries on subsequent scene loads until actual data is found.
+
+### Resolved Questions (from this log)
+1. ✅ NPC display name → `fullName`, `FirstName`, `LastName`
+2. ✅ Assignment API → `Dealer.AddCustomer/RemoveCustomer`, `Customer.AssignDealer`
+3. ✅ List types → `Il2CppSystem.Collections.Generic.List<T>`
+4. ✅ MAX_CUSTOMERS → 10 (static)
+5. ✅ Runtime access → reflection works on IL2CPP types, both backing fields and proper getters
+6. ✅ Scene lifecycle → Menu (0) then Main (1)
+
+### Still Needs Verification (requires loaded save with customers)
+- Actual customer name/addiction/spend values
+- AssignedDealer null vs Dealer object
+- Dealer AssignedCustomers count
+- Cash, Cut values
+
 ### Next Steps (for human)
 1. Build: `dotnet build ClientAssignmentOptimizer.csproj -p:CopyToMods=false`
 2. Copy `bin/Debug/net6.0/ClientAssignmentOptimizer.dll` to Windows `<GameDir>\Mods\`
 3. Launch game, **load a save with unlocked customers and at least one hired dealer**
-4. Copy `<GameDir>\MelonLoader\Latest.log` back here
-5. Critical sections to look for:
-   - `=== NPC Base Class Dump ===`
-   - `=== Assignment Method Search ===`
-   - `=== Runtime Verification ===`
-   - All `Scene loaded:` lines
+4. Wait a few seconds after the save loads (Main scene)
+5. Copy `<GameDir>\MelonLoader\Latest.log` back here
+6. Look for: `=== Runtime Verification: COMPLETE ===` (not DEFERRED)
