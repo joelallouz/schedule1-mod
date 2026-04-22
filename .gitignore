@@ -4,6 +4,9 @@ obj/
 *.dll
 *.pdb
 
+# Exception: reference DLLs in libs/ are committed for clone-and-build
+!libs/*.dll
+
 # IDE
 .vs/
 .vscode/
@@ -17,6 +20,3 @@ Thumbs.db
 
 # MelonLoader local
 MLLoader/
-
-# Local reference DLLs (for building without game installed)
-libs/
