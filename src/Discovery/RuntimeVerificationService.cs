@@ -204,10 +204,10 @@ namespace ClientAssignmentOptimizer.Discovery
         {
             // --- Identity (Dealer IS-A NPC, so name fields are inherited) ---
             TryLogProperty(dealer, "fullName", "fullName");
-            TryLogProperty(dealer, "FirstName", "FirstName");
-            TryLogProperty(dealer, "LastName", "LastName");
-            TryLogProperty(dealer, "name", "name (UnityEngine.Object)");
-            TryLogProperty(dealer, "Name", "Name");
+
+            // --- Status ---
+            TryLogProperty(dealer, "_IsRecruited_k__BackingField", "IsRecruited (backing)");
+            TryLogProperty(dealer, "IsRecruited", "IsRecruited (prop)");
 
             // --- Assigned customers ---
             var assignedList = TryGetProperty(dealer, "_AssignedCustomers_k__BackingField")
