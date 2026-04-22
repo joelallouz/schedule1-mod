@@ -1,17 +1,43 @@
-# Schedule 1 Mod
+# Client Assignment Optimizer — Schedule I Mod
 
-## Overview
+## What This Is
 
-A mod for the Steam game Schedule 1 (a.k.a. Schedule I), a drug dealer simulation game built on Unity (IL2CPP).
+A MelonLoader mod for Schedule I (Unity IL2CPP game). The mod will let players see and manage client assignments, spending, and dealer allocation.
 
-Mods are written in C# and loaded via MelonLoader.
+## Current Phase
 
-## Project Status
+**Phase 0: Bootstrap** — Scaffold complete. Discovery infrastructure exists but has not been run against the live game yet.
 
-Planning phase. No code yet — working on project plan in `docs/`.
+## Key Conventions
 
-## Key References
+- **Namespace:** `ClientAssignmentOptimizer` (sub-namespaces: `.Core`, `.Discovery`, `.Domain`, `.Services`, `.Patches`, `.UI`)
+- **Logging:** Always use `ModLogger` (in `src/Core/ModLogger.cs`), never `MelonLogger` directly. Prefix is `[ClientOptimizer]`.
+- **Discovery code** lives in `src/Discovery/` and is gated behind `ModConfig.DiscoveryEnabled`. It must NEVER mutate game state.
+- **Feature code** will go in `Domain/`, `Services/`, `Patches/`, `UI/` — these are empty until Phase 2+.
 
-- MelonLoader wiki: https://melonwiki.xyz/
-- Schedule 1 on Steam: https://store.steampowered.com/app/3164500/Schedule_I/
-- Modding communities: Nexus Mods, Thunderstore, various Discord servers
+## Documentation
+
+All persistent project knowledge lives in `docs/`:
+- `PRD.md` — what the mod does
+- `ROADMAP.md` — phased plan with checklists
+- `SESSION_LOG.md` — append an entry every session
+- `FINDINGS.md` — confirmed/suspected game internals (cite evidence)
+- `OPEN_QUESTIONS.md` — tracked unknowns
+- `ARCHITECTURE.md` — structure and design rationale
+- `TESTING.md` — how to build, deploy, and verify
+
+## Session Continuity Rules
+
+1. Read `docs/SESSION_LOG.md` and `docs/FINDINGS.md` at the start of every session.
+2. Append to `SESSION_LOG.md` at the end of every session.
+3. Never fabricate findings — only add to `FINDINGS.md` with evidence.
+4. Update `OPEN_QUESTIONS.md` as questions are answered.
+5. Update `ROADMAP.md` checkboxes as work completes.
+
+## Build
+
+```bash
+dotnet build ClientAssignmentOptimizer.csproj -p:GameDir="<path to Schedule I>"
+```
+
+Output: `ClientAssignmentOptimizer.dll` → copy to `<GameDir>/Mods/`.
