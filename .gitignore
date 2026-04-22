@@ -1,0 +1,19 @@
+# Build outputs
+bin/
+obj/
+*.dll
+*.pdb
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+*.csproj.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# MelonLoader local
+MLLoader/
