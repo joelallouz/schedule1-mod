@@ -7,10 +7,13 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
 
+    <!-- Disable default compile item inclusion — we specify src/ explicitly below -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+
     <!--
       Set GameDir to your Schedule I installation path.
-      Override via: dotnet build -p:GameDir="D:\Games\Schedule I"
-      Or edit this default to match your system.
+      Override via command line:  dotnet build -p:GameDir="D:\Games\Schedule I"
+      Override for compile-only:  dotnet build -p:GameDir="./libs" -p:CopyToMods=false
     -->
     <GameDir>C:\Program Files (x86)\Steam\steamapps\common\Schedule I</GameDir>
 
@@ -18,7 +21,7 @@
     <CopyToMods>true</CopyToMods>
   </PropertyGroup>
 
-  <!-- MelonLoader references (resolved from game install) -->
+  <!-- MelonLoader references (resolved from game install or local libs/ folder) -->
   <ItemGroup>
     <Reference Include="MelonLoader">
       <HintPath>$(GameDir)\MelonLoader\net6\MelonLoader.dll</HintPath>
@@ -34,9 +37,9 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Source files live under src/ -->
+  <!-- Source files -->
   <ItemGroup>
-    <Compile Include="src\**\*.cs" />
+    <Compile Include="src/**/*.cs" />
   </ItemGroup>
 
   <!-- Auto-copy built DLL to game Mods folder -->

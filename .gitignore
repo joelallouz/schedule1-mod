@@ -17,3 +17,6 @@ Thumbs.db
 
 # MelonLoader local
 MLLoader/
+
+# Local reference DLLs (for building without game installed)
+libs/
