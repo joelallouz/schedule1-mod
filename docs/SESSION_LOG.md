@@ -72,3 +72,72 @@ Fixed a .csproj bug: SDK-style projects auto-include `*.cs` files by default, wh
 4. Paste log output into the next Claude session for analysis
 5. Update FINDINGS.md with confirmed assemblies
 6. Begin Phase 1: targeted scans for client/customer classes
+
+---
+
+## Session 2 — Context Reconstruction & Targeted Discovery (2026-04-22)
+
+### Goals
+- Reconstruct full project state from existing code + runtime context provided by human
+- Promote confirmed runtime findings to FINDINGS.md (Phase 0 was already complete)
+- Normalize all documentation to reflect actual state
+- Implement Session 2 discovery: targeted type search for client/dealer/assignment classes
+- Prepare for first Phase 1 log capture
+
+### What Happened
+
+**Context received from human:** The mod has already been run successfully on Windows. Key runtime facts confirmed:
+- Game is IL2CPP, Unity 2022.3.62f2, Schedule I v0.4.5f2
+- ~235 assemblies loaded, Assembly-CSharp has ~3705 types, Il2CppScheduleOne.Core has ~46 types
+- MelonGame attribute ("TVGS", "Schedule I") works
+- Logging and discovery framework both work
+
+**Phase 0 declared complete.** All checkboxes satisfied. Moved to Phase 1.
+
+**Documentation overhaul:** All 7 docs files updated to reflect confirmed runtime state. FINDINGS.md now has actual confirmed data instead of "nothing confirmed yet." ROADMAP.md Phase 0 marked complete. OPEN_QUESTIONS.md has two technical questions marked resolved.
+
+**New code: TypeSearchService.cs** — Targeted type search across Assembly-CSharp and Il2CppScheduleOne.* assemblies. Searches for keywords: Client, Customer, Dealer, Assign, Owner, NPC, Buyer, Order, Relationship, Contact. For types matching Client/Customer/Dealer, dumps full type shape (fields, properties, methods). Output is grouped by keyword and bounded (max 15 full dumps).
+
+**DiscoveryOrchestrator updated** — Now calls TypeSearchService.SearchForClientRelatedTypes() after the existing assembly scan.
+
+**CLAUDE.md rewritten** — Now reflects dual-machine workflow, current phase, confirmed runtime facts, and documentation rules.
+
+### Files Created
+- `src/Discovery/TypeSearchService.cs` — keyword-based type search with full dumps for high-priority matches
+
+### Files Modified
+- `src/Discovery/DiscoveryOrchestrator.cs` — added TypeSearchService call
+- `CLAUDE.md` — full rewrite for current state
+- `docs/PRD.md` — added v1 simplification note, game version
+- `docs/ROADMAP.md` — Phase 0 complete, Phase 1 in progress
+- `docs/FINDINGS.md` — promoted confirmed runtime data
+- `docs/OPEN_QUESTIONS.md` — marked 2 resolved, added new technical questions
+- `docs/ARCHITECTURE.md` — added dual-machine workflow, TypeSearchService, libs/ dir
+- `docs/TESTING.md` — rewritten for Mac→PC workflow, Session 2 expected output
+- `docs/SESSION_LOG.md` — this entry
+
+### Decisions Made
+1. **Phase 0 is complete** — all exit criteria met (confirmed by human's runtime report).
+2. **TypeSearchService targets specific assemblies by prefix** rather than relying on the general IsGameAssembly filter — more precise, avoids Il2Cpp framework noise.
+3. **Keywords chosen for breadth** — 10 keywords covering client, dealer, assignment, and relationship concepts.
+4. **Full dumps only for Client/Customer/Dealer matches** — other keyword matches get one-line summaries to keep logs bounded.
+5. **Max 15 full dumps** — enough to see all client/dealer types without overwhelming the log.
+
+### Hypotheses Going Into This Scan
+1. Assembly-CSharp likely contains the main game classes (NPC, Client, Dealer, etc.)
+2. Il2CppScheduleOne.Core likely contains base types, enums, or managers
+3. There may be other Il2CppScheduleOne.* assemblies we haven't enumerated yet
+4. Client assignment is probably a field on a client object referencing a dealer or player
+5. "Client" or "Customer" is the most likely class name for what we're looking for
+
+### Known Limitations
+- IL2CPP reflection may not expose all fields/properties the way Mono would — type shapes could be incomplete
+- We don't know if there are Il2CppScheduleOne.* assemblies beyond .Core until we see the scan output
+- The keyword list may miss game-specific terminology (e.g., if the game calls clients "contacts" or "buyers" internally)
+
+### Next Steps (for human)
+1. Build: `dotnet build ClientAssignmentOptimizer.csproj -p:CopyToMods=false`
+2. Copy `bin/Debug/net6.0/ClientAssignmentOptimizer.dll` to Windows `<GameDir>\Mods\`
+3. Launch game
+4. Copy `<GameDir>\MelonLoader\Latest.log` and paste the full contents back here
+5. Critical section: everything between "=== Targeted Type Search ===" and "=== Targeted Type Search Complete ==="

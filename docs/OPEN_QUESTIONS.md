@@ -37,9 +37,14 @@ Track unknowns here. When a question is answered, move the answer to [FINDINGS.m
 - [ ] Can preferences change?
 - [ ] Do preferences affect which dealer a client visits?
 
-## Technical
+## Technical — Resolved
 
-- [ ] What is the correct value for `MelonGame` attribute? (company name, game name)
-- [ ] Which assemblies contain the game's client/dealer logic?
+- [x] ~~What is the correct value for `MelonGame` attribute?~~ → `("TVGS", "Schedule I")` — confirmed working (Session 1)
+- [x] ~~Which assemblies contain the game's client/dealer logic?~~ → Assembly-CSharp (~3705 types), Il2CppScheduleOne.Core (~46 types), possibly other Il2CppScheduleOne.* (Session 1)
+
+## Technical — Open
+
+- [ ] Are there other `Il2CppScheduleOne.*` sub-assemblies beyond `.Core`?
 - [ ] Does the game use Il2Cpp generics that require special handling?
-- [ ] Are there existing mods that touch client/assignment code we can reference?
+- [ ] Are there existing open-source mods that touch client/assignment code we can reference?
+- [ ] Does the game use singletons or static managers for client collections?

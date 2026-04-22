@@ -1,6 +1,6 @@
 # Roadmap
 
-## Phase 0: Bootstrap (Current)
+## Phase 0: Bootstrap — COMPLETE
 
 **Goal:** Create a clean, buildable project with logging, discovery infrastructure, and documentation.
 
@@ -9,26 +9,26 @@
 - [x] Logging system
 - [x] Discovery framework (DiscoveryOrchestrator, RuntimeScanService, ReflectionUtils, DumpUtils)
 - [x] Documentation foundation (PRD, roadmap, architecture, session log, etc.)
-- [ ] Verify mod loads in-game (requires game + MelonLoader installed)
-- [ ] Verify discovery output is useful
+- [x] Verify mod loads in-game
+- [x] Verify discovery output is useful
 
-**Exit criteria:** Mod compiles, loads in MelonLoader, logs to console, and discovery scan produces a list of game assemblies and type counts.
+**Completed:** Session 1 (2026-04-22)
 
 ---
 
-## Phase 1: Discovery
+## Phase 1: Discovery (Current)
 
 **Goal:** Reverse-engineer how the game stores client data, assignments, spending, and addiction.
 
-- [ ] Run initial discovery scan and capture output
-- [ ] Identify the assembly containing client/customer logic
-- [ ] Find the class(es) representing a client/customer
+- [x] Run initial discovery scan and capture output
+- [x] Identify key assemblies: Assembly-CSharp (~3705 types), Il2CppScheduleOne.Core (~46 types)
+- [ ] **Find the class(es) representing a client/customer** ← Session 2 target
 - [ ] Map fields: name, assignment, spend, addiction, preferences
 - [ ] Determine how "assignment" is stored (reference to dealer? enum? flag?)
 - [ ] Determine whether weekly spend is a direct field or computed
 - [ ] Determine how to enumerate all clients at runtime
 - [ ] Document all findings in FINDINGS.md
-- [ ] Build targeted discovery scans as needed
+- [x] Build targeted discovery scans (TypeSearchService — keyword search across game assemblies)
 
 **Exit criteria:** We know exactly which classes and fields to read, documented with evidence.
 
