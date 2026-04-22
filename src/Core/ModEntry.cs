@@ -8,6 +8,8 @@ namespace ClientAssignmentOptimizer.Core
 {
     public class ModEntry : MelonMod
     {
+        private bool _runtimeVerificationDone = false;
+
         public override void OnInitializeMelon()
         {
             ModLogger.Info("========================================");
@@ -23,6 +25,21 @@ namespace ClientAssignmentOptimizer.Core
             }
 
             ModLogger.Info("Initialization complete.");
+        }
+
+        public override void OnSceneWasLoaded(int buildIndex, string sceneName)
+        {
+            ModLogger.Info($"Scene loaded: '{sceneName}' (index {buildIndex})");
+
+            if (_runtimeVerificationDone || !ModConfig.DiscoveryEnabled)
+                return;
+
+            _runtimeVerificationDone = DiscoveryOrchestrator.RunRuntimeVerification();
+
+            if (!_runtimeVerificationDone)
+            {
+                ModLogger.Info("Runtime verification deferred — data not available in this scene.");
+            }
         }
     }
 }

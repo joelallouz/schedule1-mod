@@ -22,10 +22,10 @@ Track unknowns here. When a question is answered, move the answer to [FINDINGS.m
 
 ## Open — Assignment Mechanics
 
-- [ ] Does `AssignedDealer == null` mean "player-assigned"? (Needs runtime check on an actual customer)
-- [ ] Is there an `AssignCustomer()` or `RemoveCustomer()` method on `Dealer`? (Truncated at 50 methods — need targeted dump)
+- [ ] Does `AssignedDealer == null` mean "player-assigned"? *(Session 3: RuntimeVerificationService checks this — awaiting logs)*
+- [ ] Is there an `AssignCustomer()` or `RemoveCustomer()` method on `Dealer`? *(Session 3: NPCTypeScanService.SearchAssignmentMethods checks this — awaiting logs)*
 - [ ] What happens when you set `_AssignedDealer_k__BackingField` directly? Does it update the dealer's `_AssignedCustomers_k__BackingField` too, or do both need updating?
-- [ ] Does `Dealer.MAX_CUSTOMERS` vary per dealer or is it constant?
+- [ ] Does `Dealer.MAX_CUSTOMERS` vary per dealer or is it constant? *(Session 3: RuntimeVerificationService reads this — awaiting logs)*
 - [ ] Are there cooldowns or restrictions on reassignment?
 - [ ] Does the game's `AssignCustomersDialogue` flow provide clues about the proper reassignment API?
 
@@ -37,15 +37,15 @@ Track unknowns here. When a question is answered, move the answer to [FINDINGS.m
 
 ## Open — Runtime Access
 
-- [ ] Can we safely read `Customer.UnlockedCustomers` at runtime? (Is the list populated by the time our mod runs?)
-- [ ] Can we read `Dealer.AllPlayerDealers` at runtime?
-- [ ] Do the backing field properties work with Il2Cpp reflection, or do we need to use the getter methods?
-- [ ] Are the `List` types `Il2CppSystem.Collections.Generic.List` or .NET `System.Collections.Generic.List`?
+- [ ] Can we safely read `Customer.UnlockedCustomers` at runtime? *(Session 3: RuntimeVerificationService tests this — awaiting logs)*
+- [ ] Can we read `Dealer.AllPlayerDealers` at runtime? *(Session 3: RuntimeVerificationService tests this — awaiting logs)*
+- [ ] Do the backing field properties work with Il2Cpp reflection, or do we need to use the getter methods? *(Session 3: tries both approaches — awaiting logs)*
+- [ ] Are the `List` types `Il2CppSystem.Collections.Generic.List` or .NET `System.Collections.Generic.List`? *(Session 3: logs list type FullName — awaiting logs)*
 
 ## Open — UI/Display
 
-- [ ] How do we get a customer's display name? (Likely via the `NPC` base class — need to dump NPC type shape)
-- [ ] What does `CustomerData.name` return? (Inherited from ScriptableObject)
+- [ ] How do we get a customer's display name? *(Session 3: NPC dump + runtime verification try multiple name fields — awaiting logs)*
+- [ ] What does `CustomerData.name` return? *(Session 3: RuntimeVerificationService reads this — awaiting logs)*
 
 ## Open — Technical
 

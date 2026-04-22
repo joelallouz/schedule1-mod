@@ -180,3 +180,75 @@ Human ran the mod and returned full MelonLoader log. Results:
    - Look for assign/remove customer methods on `Dealer` (need full method dump)
 2. Verify we can access Il2Cpp properties from mod code
 3. If runtime reading works → begin Phase 2 domain models
+
+---
+
+## Session 3 — Runtime Verification & Method Discovery (2026-04-22)
+
+### Goals
+- Dump NPC base class to find display name / ID fields
+- Search Dealer + Customer for assignment-related methods (Assign, Remove, Transfer)
+- Verify runtime access: read Customer.UnlockedCustomers and Dealer.AllPlayerDealers from a loaded save
+- For customers: log name, AssignedDealer, CurrentAddiction, MinWeeklySpend/MaxWeeklySpend
+- For dealers: log name, AssignedCustomers count, MAX_CUSTOMERS, Cash, Cut
+
+### What Happened
+
+**Two new discovery services written:**
+
+1. **NPCTypeScanService.cs** — Runs during OnInitializeMelon (reflection-only, no live data needed):
+   - Dumps NPC base class: full inheritance chain, highlights name/ID-related properties, lists up to 100 properties
+   - Searches Dealer and Customer for methods matching: Assign, Remove, Add, Customer, Transfer, Unassign — logs full signatures with declaring type
+
+2. **RuntimeVerificationService.cs** — Runs on scene load (needs live game data):
+   - Reads `Customer.UnlockedCustomers` via reflection, logs count
+   - For first 5 customers: tries multiple name property paths (NPC.fullName, NPC.FirstName, etc.), reads AssignedDealer (null = player?), CurrentAddiction, CustomerData spend range
+   - Reads `Dealer.AllPlayerDealers`, logs count and MAX_CUSTOMERS
+   - For each dealer: name, AssignedCustomers count, Cash, Cut, DealerType
+   - Returns false if data isn't loaded yet (retries on next scene load)
+
+**ModEntry updated with OnSceneWasLoaded:**
+- Logs every scene load (name + index) for debugging scene lifecycle
+- Triggers RuntimeVerificationService once per session, retrying across scenes until data is found
+
+**DiscoveryOrchestrator split into two phases:**
+- `Run()` — reflection-only scans (OnInitializeMelon)
+- `RunRuntimeVerification()` — live data access (OnSceneWasLoaded)
+
+### Files Created
+- `src/Discovery/NPCTypeScanService.cs` — NPC dump + assignment method search
+- `src/Discovery/RuntimeVerificationService.cs` — live data verification
+
+### Files Modified
+- `src/Discovery/DiscoveryOrchestrator.cs` — added NPCTypeScanService calls to Run(), added RunRuntimeVerification()
+- `src/Core/ModEntry.cs` — added OnSceneWasLoaded with one-shot runtime verification trigger
+
+### Decisions Made
+1. **OnSceneWasLoaded with retry** — We don't know which scene has game data. The verification attempts on each scene load until Customer.UnlockedCustomers is non-null, then stops.
+2. **Reflection-only access** — No Assembly-CSharp.dll compile reference needed. All property access via System.Reflection. Tries both backing field names (`_X_k__BackingField`) and regular property names.
+3. **NPC dump bounded at 100 properties** — Higher than DumpUtils' default 50 because NPC is a key base class and we need to find the name fields.
+4. **Assignment method search covers both Dealer AND Customer** — The API to move a customer might live on either class.
+
+### Open Questions Targeted by This Scan
+- Does `AssignedDealer == null` mean player-assigned?
+- What is the NPC display name property?
+- What methods exist for assignment/reassignment?
+- Can we read IL2CPP properties via reflection at runtime?
+- Are the lists `Il2CppSystem.Collections.Generic.List` or `System.Collections.Generic.List`?
+- Does `Dealer.MAX_CUSTOMERS` vary per dealer or is it constant?
+
+### Known Limitations
+- IL2CPP property access via reflection may not work the same as Mono — this scan will tell us
+- `OnSceneWasLoaded` might fire before data is populated — the retry mechanism handles this
+- We don't know scene names yet — logging them will fill that gap
+
+### Next Steps (for human)
+1. Build: `dotnet build ClientAssignmentOptimizer.csproj -p:CopyToMods=false`
+2. Copy `bin/Debug/net6.0/ClientAssignmentOptimizer.dll` to Windows `<GameDir>\Mods\`
+3. Launch game, **load a save with unlocked customers and at least one hired dealer**
+4. Copy `<GameDir>\MelonLoader\Latest.log` back here
+5. Critical sections to look for:
+   - `=== NPC Base Class Dump ===`
+   - `=== Assignment Method Search ===`
+   - `=== Runtime Verification ===`
+   - All `Scene loaded:` lines
