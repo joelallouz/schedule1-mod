@@ -141,3 +141,42 @@ Fixed a .csproj bug: SDK-style projects auto-include `*.cs` files by default, wh
 3. Launch game
 4. Copy `<GameDir>\MelonLoader\Latest.log` and paste the full contents back here
 5. Critical section: everything between "=== Targeted Type Search ===" and "=== Targeted Type Search Complete ==="
+
+### Log Analysis (Session 2, continued)
+
+Human ran the mod and returned full MelonLoader log. Results:
+
+**95 types matched** across 10 keywords. Key matches by category:
+
+| Keyword | Count | Notable Types |
+|---|---|---|
+| Customer | 11 | `Economy.Customer`, `Economy.CustomerData`, `Economy.CustomerAffinityData`, `Economy.CustomerPreference`, `Economy.CustomerSatisfaction`, `Economy.ECustomerStandard` |
+| Dealer | 12 | `Economy.Dealer`, `Economy.EDealerType`, `Persistence.Datas.DealerData`, `UI.Phone.Messages.DealerManagementApp` |
+| NPC | 55 | `NPCs.NPC`, `NPCs.NPCManager`, `NPCs.Relation.NPCRelationData` and many schedule/behaviour types |
+| Assign | 1 | `UI.Management.AssignedWorkerDisplay` |
+| Client | 2 | FishySteamworks networking types (NOT game clients — false positive) |
+| Contact | 3 | Phone contacts UI |
+| Relationship | 5 | `NPCs.Relation.ERelationshipCategory`, `NPCs.Relation.RelationshipCategory` |
+| Order | 5 | Sort order enums (not purchase orders) |
+| Owner | 1 | `ItemFramework.IItemSlotOwner` |
+
+**Critical discovery:** The game uses "Customer" not "Client" for its entities. Our mod name "Client Assignment Optimizer" is fine for the user-facing name, but internally we reference `Customer` and `Dealer` classes.
+
+**Full type shapes confirmed for primary classes.** See FINDINGS.md for complete property maps of Customer, CustomerData, Dealer, and supporting types.
+
+**Almost all Phase 1 discovery questions answered in a single scan.** Assignment is a direct Dealer reference. Addiction is a float. Weekly spend is a min/max range with a computed method. Preferences are stored as affinities and preferred properties. Enumeration uses static lists.
+
+### What Changed After Log Analysis
+- `docs/FINDINGS.md` — major update with all confirmed class/field data
+- `docs/OPEN_QUESTIONS.md` — 11 questions resolved, new questions about runtime access and reassignment API
+- `docs/ROADMAP.md` — Phase 1 mostly complete (10 of 14 items checked)
+- `CLAUDE.md` — updated with confirmed class names
+
+### Next Steps (for Session 3)
+1. Write a focused discovery scan to:
+   - Read `Customer.UnlockedCustomers` at runtime and log count + names
+   - Check if `AssignedDealer == null` means player-assigned
+   - Dump the `NPC` base class to find display name field
+   - Look for assign/remove customer methods on `Dealer` (need full method dump)
+2. Verify we can access Il2Cpp properties from mod code
+3. If runtime reading works → begin Phase 2 domain models
