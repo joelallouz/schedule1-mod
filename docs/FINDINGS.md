@@ -173,12 +173,48 @@
 
 ---
 
+### Runtime Data Verification (Session 3, third run) — FULL SUCCESS
+
+**Test save:** 39 unlocked customers, 3 recruited dealers (Brad, Molly, Benji) with 10 customers each, 9 player-assigned customers.
+
+**Customer data confirmed at runtime (first 5 of 39):**
+
+| Name | NPC.ID | AssignedDealer | Addiction | Min/Max Spend | Standards |
+|---|---|---|---|---|---|
+| Kyle Cooley | kyle_cooley | Benji Coleman | 1.0 | $400-$900 | Low |
+| Mick Lubbin | mick_lubbin | NULL (player) | 0.9375 | $400-$800 | Low |
+| Jessi Waters | jessi_waters | Benji Coleman | 1.0 | $200-$1200 | VeryLow |
+| Sam Thompson | sam_thompson | NULL (player) | 1.0 | $200-$500 | Low |
+| Austin Steiner | austin_steiner | Benji Coleman | 1.0 | $400-$800 | Low |
+
+**Dealer data confirmed at runtime (all 6):**
+
+| Name | IsRecruited | AssignedCustomers | Cash | Cut | Type |
+|---|---|---|---|---|---|
+| Brad Crosby | True | 10 | $770 | 0.2 | PlayerDealer |
+| Jane Lucero | False | 0 | $0 | 0.2 | PlayerDealer |
+| Molly Presley | True | 10 | $0 | 0.2 | PlayerDealer |
+| Benji Coleman | True | 10 | $0 | 0.2 | PlayerDealer |
+| Wei Long | False | 0 | $0 | 0.2 | PlayerDealer |
+| Leo Rivers | False | 0 | $0 | 0.2 | PlayerDealer |
+
+**Key runtime access patterns confirmed:**
+- Customer name: `customer._NPC_k__BackingField` → NPC → `.fullName` (e.g., "Kyle Cooley")
+- Customer ID: NPC → `.ID` (e.g., "kyle_cooley")
+- `fullName` is on NPC, NOT on Customer directly
+- `CustomerData.name` returns prefab name (e.g., "KyleData") — not useful for display
+- `AssignedDealer == null` → **confirmed: means player-assigned**
+- Both backing field and property getter return identical values
+- 10s delay after Main scene load is sufficient for data population
+- **Evidence:** RuntimeVerificationService output, Session 3 log (26-4-22_18-15-48.log)
+
+---
+
 ## Suspected
 
-- `Customer.AssignedDealer == null` means the customer is player-assigned (no dealer). Still needs runtime verification on a save with actual customers.
-- `Customer._WeeklyPurchaseRecord_k__BackingField` contains actual transaction records, not just a computed total. The `CustomerData.GetAdjustedWeeklySpend()` method likely computes the expected/target spend.
 - Reassignment likely requires calling both `Dealer.RemoveCustomer()` / `Dealer.AddCustomer()` AND `Customer.AssignDealer()` to keep both sides in sync. The network RPC variants suggest this is a multiplayer-aware operation.
 - The `AddCustomer_Server` / `AddCustomer_Client` RPC pattern suggests the game uses FishNet server authority — mods may need to call the server variant for proper sync.
+- `Customer._WeeklyPurchaseRecord_k__BackingField` contains actual transaction records, not just a computed total. The `CustomerData.GetAdjustedWeeklySpend()` method likely computes the expected/target spend.
 
 ---
 

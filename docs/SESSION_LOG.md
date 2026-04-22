@@ -308,9 +308,51 @@ Retry logic worked: deferred on Menu (0 customers, 0 dealers), ran on Main scene
 
 **Fix applied:** Replaced immediate `OnSceneWasLoaded` trigger with a 10-second delay after Main scene loads. Uses `System.Diagnostics.Stopwatch` in `OnUpdate()` to avoid Unity API dependencies.
 
-### Next Steps (for human)
-1. Copy `bin/Debug/net6.0/ClientAssignmentOptimizer.dll` to Windows `<GameDir>\Mods\`
-2. Launch game, load a save with customers and dealers
-3. Wait at least 15 seconds after save loads
-4. Copy `<GameDir>\MelonLoader\Latest.log` back here
-5. Look for: "Delay elapsed — running runtime verification now" followed by customer data
+### Log Analysis (Session 3, third run — 26-4-22_18-15-48.log) — FULL SUCCESS
+
+10s delay worked. Runtime verification ran on Main scene with full data.
+
+**39 unlocked customers** — first 5 sampled:
+
+| Name | NPC.ID | AssignedDealer | Addiction | Min/Max Spend | Standards |
+|---|---|---|---|---|---|
+| Kyle Cooley | kyle_cooley | Benji Coleman | 1.0 | $400-$900 | Low |
+| Mick Lubbin | mick_lubbin | NULL (player) | 0.9375 | $400-$800 | Low |
+| Jessi Waters | jessi_waters | Benji Coleman | 1.0 | $200-$1200 | VeryLow |
+| Sam Thompson | sam_thompson | NULL (player) | 1.0 | $200-$500 | Low |
+| Austin Steiner | austin_steiner | Benji Coleman | 1.0 | $400-$800 | Low |
+
+**6 dealers** — matches user's ground truth (3 recruited, 10 customers each):
+
+| Name | IsRecruited | Customers | Cash | Cut |
+|---|---|---|---|---|
+| Brad Crosby | True | 10 | $770 | 0.2 |
+| Jane Lucero | False | 0 | $0 | 0.2 |
+| Molly Presley | True | 10 | $0 | 0.2 |
+| Benji Coleman | True | 10 | $0 | 0.2 |
+| Wei Long | False | 0 | $0 | 0.2 |
+| Leo Rivers | False | 0 | $0 | 0.2 |
+
+**Confirmed:**
+- `AssignedDealer == null` → player-assigned (Mick, Sam confirmed)
+- `fullName` on NPC, not on Customer directly — access pattern: `customer.NPC.fullName`
+- `NPC.ID` gives string ID (e.g., "kyle_cooley")
+- `CustomerData.name` = prefab name ("KyleData") — not useful for display
+- All properties readable: names, IDs, assignments, addiction, spend, standards, IsRecruited, Cash, Cut
+- 39 total = 30 dealer-assigned + 9 player-assigned
+
+### Phase 1: COMPLETE
+
+All exit criteria met:
+- ✅ Customer name (via NPC.fullName)
+- ✅ Assignment (AssignedDealer: null = player, object = dealer)
+- ✅ Spend (CustomerData.MinWeeklySpend / MaxWeeklySpend)
+- ✅ Addiction (CurrentAddiction: 0.0-1.0 float)
+- ✅ Reassignment API known (Dealer.AddCustomer, RemoveCustomer, Customer.AssignDealer)
+- ✅ IsRecruited distinguishes recruited vs unrecruited dealers
+
+### Next Steps (for Session 4)
+1. Begin Phase 2: Read-Only Client View
+2. Create domain models in src/Domain/
+3. Create GameDataService in src/Services/ wrapping reflection access
+4. Preferences still untested but should work same as other CustomerData fields

@@ -16,7 +16,7 @@
 
 ---
 
-## Phase 1: Discovery (Current)
+## Phase 1: Discovery — COMPLETE
 
 **Goal:** Reverse-engineer how the game stores client data, assignments, spending, and addiction.
 
@@ -35,9 +35,11 @@
 - [x] **Verify runtime access** — YES: static lists readable via reflection, Il2CppSystem.Collections.Generic.List with working Count/indexer (Session 3)
 - [x] **Identify assignment/reassignment API** — `Dealer.AddCustomer(Customer)`, `Dealer.RemoveCustomer(Customer)`, `Customer.AssignDealer(Dealer)` (Session 3)
 - [x] **Dump NPC base class** — `fullName`, `FirstName`, `LastName`, `ID`, `GUID` all found (Session 3)
-- [ ] **Verify null-dealer = player-assigned hypothesis** — needs runtime check on loaded save with actual customers (Session 3 ran on Menu scene only)
+- [x] **Verify null-dealer = player-assigned hypothesis** — CONFIRMED: null = player-assigned (Session 3, third run with loaded save)
 
 **Exit criteria:** We can read customer name, assignment, spend, addiction, and preferences from mod code at runtime. We know the reassignment method.
+
+**Completed:** Session 3 (2026-04-22)
 
 ---
 
