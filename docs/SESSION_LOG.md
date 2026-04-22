@@ -282,10 +282,35 @@ Human ran the mod and returned log `26-4-22_17-53-47.log`. All three new section
 - Dealer AssignedCustomers count
 - Cash, Cut values
 
+### Log Analysis (Session 3, second run — 26-4-22_18-4-39.log)
+
+Retry logic worked: deferred on Menu (0 customers, 0 dealers), ran on Main scene (6 dealers found).
+
+**Dealer data confirmed at runtime:**
+
+| Dealer | Customers | Cash | Cut | Type |
+|---|---|---|---|---|
+| Brad Crosby | 0 | 0 | 0.2 | PlayerDealer |
+| Jane Lucero | 0 | 0 | 0.2 | PlayerDealer |
+| Molly Presley | 0 | 0 | 0.2 | PlayerDealer |
+| Benji Coleman | 0 | 0 | 0.2 | PlayerDealer |
+| Wei Long | 0 | 0 | 0.2 | PlayerDealer |
+| Leo Rivers | 0 | 0 | 0.2 | PlayerDealer |
+
+**Runtime access confirmed:**
+- `fullName` works: "Brad Crosby", etc.
+- `FirstName`, `LastName` work individually
+- `name` (UnityEngine.Object) returns first name only
+- `Name` property does not exist
+- `Cash`, `Cut`, `DealerType`, `AssignedCustomers` all readable
+
+**Problem:** 0 unlocked customers, 0 assigned customers per dealer. Save has 6 dealers — must have customers, but `Customer.UnlockedCustomers` isn't populated yet when `OnSceneWasLoaded` fires. Game loads dealers before customers.
+
+**Fix applied:** Replaced immediate `OnSceneWasLoaded` trigger with a 10-second delay after Main scene loads. Uses `System.Diagnostics.Stopwatch` in `OnUpdate()` to avoid Unity API dependencies.
+
 ### Next Steps (for human)
-1. Build: `dotnet build ClientAssignmentOptimizer.csproj -p:CopyToMods=false`
-2. Copy `bin/Debug/net6.0/ClientAssignmentOptimizer.dll` to Windows `<GameDir>\Mods\`
-3. Launch game, **load a save with unlocked customers and at least one hired dealer**
-4. Wait a few seconds after the save loads (Main scene)
-5. Copy `<GameDir>\MelonLoader\Latest.log` back here
-6. Look for: `=== Runtime Verification: COMPLETE ===` (not DEFERRED)
+1. Copy `bin/Debug/net6.0/ClientAssignmentOptimizer.dll` to Windows `<GameDir>\Mods\`
+2. Launch game, load a save with customers and dealers
+3. Wait at least 15 seconds after save loads
+4. Copy `<GameDir>\MelonLoader\Latest.log` back here
+5. Look for: "Delay elapsed — running runtime verification now" followed by customer data

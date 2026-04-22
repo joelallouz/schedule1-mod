@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using MelonLoader;
 using ClientAssignmentOptimizer.Discovery;
 
@@ -9,6 +10,9 @@ namespace ClientAssignmentOptimizer.Core
     public class ModEntry : MelonMod
     {
         private bool _runtimeVerificationDone = false;
+        private Stopwatch _mainSceneTimer;
+
+        private const double VerificationDelaySeconds = 10.0;
 
         public override void OnInitializeMelon()
         {
@@ -34,11 +38,28 @@ namespace ClientAssignmentOptimizer.Core
             if (_runtimeVerificationDone || !ModConfig.DiscoveryEnabled)
                 return;
 
-            _runtimeVerificationDone = DiscoveryOrchestrator.RunRuntimeVerification();
-
-            if (!_runtimeVerificationDone)
+            if (sceneName == "Main")
             {
-                ModLogger.Info("Runtime verification deferred — data not available in this scene.");
+                _mainSceneTimer = Stopwatch.StartNew();
+                ModLogger.Info($"Main scene detected — runtime verification will run in {VerificationDelaySeconds}s");
+            }
+        }
+
+        public override void OnUpdate()
+        {
+            if (_mainSceneTimer == null || _runtimeVerificationDone)
+                return;
+
+            if (_mainSceneTimer.Elapsed.TotalSeconds >= VerificationDelaySeconds)
+            {
+                _mainSceneTimer = null;
+                ModLogger.Info($"Delay elapsed — running runtime verification now.");
+                _runtimeVerificationDone = DiscoveryOrchestrator.RunRuntimeVerification();
+
+                if (!_runtimeVerificationDone)
+                {
+                    ModLogger.Warning("Runtime verification found no data after delay.");
+                }
             }
         }
     }
