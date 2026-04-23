@@ -40,6 +40,12 @@ namespace ClientAssignmentOptimizer.Core
 
             _inMainScene = sceneName == "Main";
 
+            if (!_inMainScene && CustomerPanelUI.Visible)
+            {
+                CustomerPanelUI.Toggle();
+                ModLogger.Info("Left Main scene — closing customer panel.");
+            }
+
             if (_inMainScene && !_runtimeVerificationDone && ModConfig.DiscoveryEnabled)
             {
                 _mainSceneTimer = Stopwatch.StartNew();
