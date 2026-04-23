@@ -10,5 +10,6 @@ namespace ClientAssignmentOptimizer.Domain
         public float MinWeeklySpend { get; set; }
         public float MaxWeeklySpend { get; set; }
         public string Standards { get; set; }
+        public string Preferences { get; set; }
     }
 }

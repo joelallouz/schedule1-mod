@@ -143,6 +143,7 @@ namespace ClientAssignmentOptimizer.Services
                     MinWeeklySpend = custData != null ? GetPropFloat(custData, "MinWeeklySpend") : 0f,
                     MaxWeeklySpend = custData != null ? GetPropFloat(custData, "MaxWeeklySpend") : 0f,
                     Standards = custData != null ? GetPropString(custData, "Standards") ?? "?" : "?",
+                    Preferences = custData != null ? ReadPreferences(custData) : "",
                 };
             }
             catch (Exception ex)
@@ -174,6 +175,32 @@ namespace ClientAssignmentOptimizer.Services
             {
                 ModLogger.Debug($"MapDealer failed: {ex.Message}");
                 return null;
+            }
+        }
+
+        private static string ReadPreferences(object custData)
+        {
+            try
+            {
+                var prefList = GetProp(custData, "PreferredProperties");
+                if (prefList == null) return "";
+
+                int count = GetListCount(prefList);
+                if (count <= 0) return "";
+
+                var names = new List<string>();
+                for (int i = 0; i < count; i++)
+                {
+                    var item = GetListItem(prefList, i);
+                    if (item != null)
+                        names.Add(item.ToString());
+                }
+
+                return string.Join(", ", names);
+            }
+            catch
+            {
+                return "";
             }
         }
 

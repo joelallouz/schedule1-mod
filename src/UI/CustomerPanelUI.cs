@@ -24,14 +24,15 @@ namespace ClientAssignmentOptimizer.UI
         private static readonly Color DealerColor = new Color(1f, 1f, 1f);
         private static readonly Color HeaderColor = new Color(0.8f, 0.8f, 0.8f);
 
-        private const float ColName = 160f;
-        private const float ColAssign = 130f;
-        private const float ColAddiction = 80f;
-        private const float ColMinSpend = 80f;
-        private const float ColMaxSpend = 80f;
-        private const float ColStandards = 90f;
+        private const float ColName = 150f;
+        private const float ColAssign = 120f;
+        private const float ColAddiction = 70f;
+        private const float ColMinSpend = 70f;
+        private const float ColMaxSpend = 70f;
+        private const float ColStandards = 80f;
+        private const float ColPrefs = 180f;
 
-        private const float WindowWidth = 700f;
+        private const float WindowWidth = 820f;
         private const float WindowHeight = 500f;
         private const float Margin = 10f;
 
@@ -101,6 +102,7 @@ namespace ClientAssignmentOptimizer.UI
             DrawSortButton("Min $", SortColumn.MinSpend, ColMinSpend);
             DrawSortButton("Max $", SortColumn.MaxSpend, ColMaxSpend);
             DrawSortButton("Standards", SortColumn.Standards, ColStandards);
+            DrawSortButton("Preferences", SortColumn.Preferences, ColPrefs);
 
             GUILayout.EndHorizontal();
         }
@@ -141,6 +143,7 @@ namespace ClientAssignmentOptimizer.UI
                 GUILayout.Label($"${c.MinWeeklySpend:F0}", GUILayout.Width(ColMinSpend));
                 GUILayout.Label($"${c.MaxWeeklySpend:F0}", GUILayout.Width(ColMaxSpend));
                 GUILayout.Label(c.Standards, GUILayout.Width(ColStandards));
+                GUILayout.Label(c.Preferences, GUILayout.Width(ColPrefs));
                 GUILayout.EndHorizontal();
             }
 
@@ -171,6 +174,9 @@ namespace ClientAssignmentOptimizer.UI
                 SortColumn.Standards => _sortAscending
                     ? _displayCustomers.OrderBy(c => c.Standards).ToList()
                     : _displayCustomers.OrderByDescending(c => c.Standards).ToList(),
+                SortColumn.Preferences => _sortAscending
+                    ? _displayCustomers.OrderBy(c => c.Preferences).ToList()
+                    : _displayCustomers.OrderByDescending(c => c.Preferences).ToList(),
                 _ => _displayCustomers,
             };
         }
@@ -183,6 +189,7 @@ namespace ClientAssignmentOptimizer.UI
             MinSpend,
             MaxSpend,
             Standards,
+            Preferences,
         }
     }
 }
