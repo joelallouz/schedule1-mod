@@ -78,6 +78,13 @@ namespace ClientAssignmentOptimizer.Core
                 CustomerPanelUI.Refresh();
                 ModLogger.Info("Customer panel data refreshed.");
             }
+
+            // Unlock cursor while panel is open (game fights to re-lock every frame)
+            if (CustomerPanelUI.Visible)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
         }
 
         public override void OnGUI()
