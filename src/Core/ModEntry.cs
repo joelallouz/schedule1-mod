@@ -43,7 +43,7 @@ namespace ClientAssignmentOptimizer.Core
             if (!_inMainScene && CustomerPanelUI.Visible)
             {
                 CustomerPanelUI.Toggle();
-                SetGamePaused(false);
+                RestoreGameState();
                 ModLogger.Info("Left Main scene — closing customer panel.");
             }
 
@@ -72,12 +72,21 @@ namespace ClientAssignmentOptimizer.Core
                 }
             }
 
-            // Hotkey: F9 toggles panel (and pauses/unpauses game)
+            // Hotkey: F9 toggles panel
             if (_inMainScene && Input.GetKeyDown(KeyCode.F9))
             {
                 CustomerPanelUI.Toggle();
-                SetGamePaused(CustomerPanelUI.Visible);
-                ModLogger.Info($"Customer panel: {(CustomerPanelUI.Visible ? "OPEN (game paused)" : "CLOSED (game resumed)")}");
+
+                if (CustomerPanelUI.Visible)
+                {
+                    Time.timeScale = 0f;
+                    ModLogger.Info("Customer panel: OPEN (game paused)");
+                }
+                else
+                {
+                    RestoreGameState();
+                    ModLogger.Info("Customer panel: CLOSED (game resumed)");
+                }
             }
 
             // Hotkey: F10 refreshes data while panel is open
@@ -87,11 +96,12 @@ namespace ClientAssignmentOptimizer.Core
                 ModLogger.Info("Customer panel data refreshed.");
             }
 
-            // Keep cursor unlocked while panel is open (game fights to re-lock every frame)
+            // While panel visible: unlock cursor and kill mouse input so camera stops moving
             if (CustomerPanelUI.Visible)
             {
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
+                Input.ResetInputAxes();
             }
         }
 
@@ -100,9 +110,16 @@ namespace ClientAssignmentOptimizer.Core
             CustomerPanelUI.Draw();
         }
 
-        private static void SetGamePaused(bool paused)
+        public override void OnDeinitializeMelon()
         {
-            Time.timeScale = paused ? 0f : 1f;
+            RestoreGameState();
+        }
+
+        private static void RestoreGameState()
+        {
+            Time.timeScale = 1f;
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
         }
     }
 }
