@@ -43,6 +43,7 @@ namespace ClientAssignmentOptimizer.Core
             if (!_inMainScene && CustomerPanelUI.Visible)
             {
                 CustomerPanelUI.Toggle();
+                SetGamePaused(false);
                 ModLogger.Info("Left Main scene — closing customer panel.");
             }
 
@@ -71,11 +72,12 @@ namespace ClientAssignmentOptimizer.Core
                 }
             }
 
-            // Hotkey: F9 toggles panel
+            // Hotkey: F9 toggles panel (and pauses/unpauses game)
             if (_inMainScene && Input.GetKeyDown(KeyCode.F9))
             {
                 CustomerPanelUI.Toggle();
-                ModLogger.Info($"Customer panel: {(CustomerPanelUI.Visible ? "OPEN" : "CLOSED")}");
+                SetGamePaused(CustomerPanelUI.Visible);
+                ModLogger.Info($"Customer panel: {(CustomerPanelUI.Visible ? "OPEN (game paused)" : "CLOSED (game resumed)")}");
             }
 
             // Hotkey: F10 refreshes data while panel is open
@@ -85,7 +87,7 @@ namespace ClientAssignmentOptimizer.Core
                 ModLogger.Info("Customer panel data refreshed.");
             }
 
-            // Unlock cursor while panel is open (game fights to re-lock every frame)
+            // Keep cursor unlocked while panel is open (game fights to re-lock every frame)
             if (CustomerPanelUI.Visible)
             {
                 Cursor.lockState = CursorLockMode.None;
@@ -96,6 +98,11 @@ namespace ClientAssignmentOptimizer.Core
         public override void OnGUI()
         {
             CustomerPanelUI.Draw();
+        }
+
+        private static void SetGamePaused(bool paused)
+        {
+            Time.timeScale = paused ? 0f : 1f;
         }
     }
 }
