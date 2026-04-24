@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using ClientAssignmentOptimizer.Core;
 using ClientAssignmentOptimizer.Domain;
 using ClientAssignmentOptimizer.Services;
 
@@ -9,7 +10,7 @@ namespace ClientAssignmentOptimizer.UI
 {
     /// <summary>
     /// IMGUI panel showing all customers and their stats.
-    /// Toggle with F9. Read-only — no mutation.
+    /// Toggle with F9. Click a row to select; action bar above the table reassigns the selected customer.
     /// </summary>
     public static class CustomerPanelUI
     {
@@ -19,11 +20,14 @@ namespace ClientAssignmentOptimizer.UI
         private static List<DealerInfo> _displayDealers = new List<DealerInfo>();
         private static SortColumn _sortColumn = SortColumn.MaxSpend;
         private static bool _sortAscending = false;
+        private static string _selectedNpcId;  // stable across refreshes
 
         private static readonly Color PlayerColor = new Color(0.4f, 1f, 0.4f);
         private static readonly Color DealerColor = new Color(1f, 1f, 1f);
         private static readonly Color HeaderColor = new Color(0.8f, 0.8f, 0.8f);
+        private static readonly Color SelectedColor = new Color(1f, 0.85f, 0.4f);
 
+        private const float ColSelect = 18f;
         private const float ColName = 150f;
         private const float ColAssign = 120f;
         private const float ColAddiction = 70f;
@@ -32,8 +36,8 @@ namespace ClientAssignmentOptimizer.UI
         private const float ColStandards = 80f;
         private const float ColPrefs = 180f;
 
-        private const float WindowWidth = 820f;
-        private const float WindowHeight = 500f;
+        private const float WindowWidth = 840f;
+        private const float WindowHeight = 540f;
         private const float Margin = 10f;
 
         public static bool Visible => _visible;
@@ -68,10 +72,72 @@ namespace ClientAssignmentOptimizer.UI
                 WindowWidth - Margin * 2, WindowHeight - Margin * 2));
 
             DrawHeader();
+            DrawActionBar();
             DrawColumnHeaders();
             DrawCustomerList();
 
             GUILayout.EndArea();
+        }
+
+        private static void DrawActionBar()
+        {
+            var selected = GetSelectedCustomer();
+            if (selected == null)
+            {
+                GUILayout.Label("<i>Click a customer row to select, then reassign.</i>");
+                GUILayout.Space(4);
+                return;
+            }
+
+            GUILayout.BeginHorizontal();
+
+            var prev = GUI.contentColor;
+            GUI.contentColor = SelectedColor;
+            GUILayout.Label($"Selected: {selected.FullName}  ({(selected.IsPlayerAssigned ? "PLAYER" : selected.AssignedDealerName)})",
+                GUILayout.Width(300));
+            GUI.contentColor = prev;
+
+            if (GUILayout.Button("Deselect", GUILayout.Width(80))) _selectedNpcId = null;
+
+            GUILayout.Label("Move to:", GUILayout.Width(60));
+
+            // Move-to-player button (only if not already player-assigned)
+            if (!selected.IsPlayerAssigned)
+            {
+                if (GUILayout.Button("Player", GUILayout.Width(70)))
+                {
+                    ModLogger.Info($"User requested: move {selected.FullName} -> PLAYER");
+                    if (ReassignmentService.MoveToPlayer(selected.NpcId))
+                        Refresh();
+                }
+            }
+
+            // One button per recruited dealer that isn't the current assignment
+            foreach (var d in _displayDealers.Where(d => d.IsRecruited).OrderBy(d => d.FullName))
+            {
+                if (selected.AssignedDealerName == d.FullName) continue;
+
+                bool full = d.AssignedCustomerCount >= 10;
+                string label = full ? $"{d.FullName} (full)" : d.FullName;
+
+                GUI.enabled = !full;
+                if (GUILayout.Button(label, GUILayout.Width(130)))
+                {
+                    ModLogger.Info($"User requested: move {selected.FullName} -> {d.FullName}");
+                    if (ReassignmentService.MoveToDealer(selected.NpcId, d.FullName))
+                        Refresh();
+                }
+                GUI.enabled = true;
+            }
+
+            GUILayout.EndHorizontal();
+            GUILayout.Space(4);
+        }
+
+        private static CustomerInfo GetSelectedCustomer()
+        {
+            if (string.IsNullOrEmpty(_selectedNpcId)) return null;
+            return _displayCustomers.FirstOrDefault(c => c.NpcId == _selectedNpcId);
         }
 
         private static void DrawHeader()
@@ -96,6 +162,7 @@ namespace ClientAssignmentOptimizer.UI
         {
             GUILayout.BeginHorizontal();
 
+            GUILayout.Label("", GUILayout.Width(ColSelect));
             DrawSortButton("Name", SortColumn.Name, ColName);
             DrawSortButton("Assignment", SortColumn.Assignment, ColAssign);
             DrawSortButton("Addiction", SortColumn.Addiction, ColAddiction);
@@ -134,9 +201,19 @@ namespace ClientAssignmentOptimizer.UI
 
             foreach (var c in _displayCustomers)
             {
-                GUI.contentColor = c.IsPlayerAssigned ? PlayerColor : DealerColor;
+                bool isSelected = c.NpcId == _selectedNpcId;
+                GUI.contentColor = isSelected
+                    ? SelectedColor
+                    : (c.IsPlayerAssigned ? PlayerColor : DealerColor);
 
                 GUILayout.BeginHorizontal();
+
+                // Per-row select button — native click handling, no GetLastRect (stripped in this IL2CPP build)
+                if (GUILayout.Button(isSelected ? "►" : " ", GUILayout.Width(ColSelect)))
+                {
+                    _selectedNpcId = isSelected ? null : c.NpcId;
+                }
+
                 GUILayout.Label(c.FullName, GUILayout.Width(ColName));
                 GUILayout.Label(c.IsPlayerAssigned ? "PLAYER" : c.AssignedDealerName, GUILayout.Width(ColAssign));
                 GUILayout.Label(c.CurrentAddiction.ToString("F2"), GUILayout.Width(ColAddiction));

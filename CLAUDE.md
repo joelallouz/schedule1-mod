@@ -8,7 +8,14 @@ A MelonLoader mod for **Schedule I** (Unity IL2CPP, v0.4.5f2, Unity 2022.3.62f2)
 
 ## Current Phase
 
-**Phase 2: Read-Only Client View (in progress)** — Domain models, GameDataService, and IMGUI panel written. Builds clean. Not yet tested at runtime. Next: deploy DLL and test F9 panel in-game.
+**Phase 3: Reassignment — COMPLETE (Session 6, 2026-04-23)** — Row-select UI + `ReassignmentService` working. Verified in-game:
+- Dealer → Player: `Dealer.RemoveCustomer(customer)` + `Customer.AssignDealer(null)` ✓
+- Player → Dealer: `Dealer.AddCustomer(customer)` + `Customer.AssignDealer(dealer)` ✓
+- Save/reload persistence across quit-to-menu → reload cycle ✓
+
+Deferred (low risk): dealer A → dealer B direct transfer, FishNet multiplayer RPCs. Next: Phase 4 (Flagging and Filtering).
+
+**⚠️ IL2CPP gotcha:** `UnityEngine.GUILayoutUtility.GetLastRect()` is stripped — throws `NotSupportedException: Method unstripping failed`. Use `GUILayout.Button` for clickable UI elements instead.
 
 ## Key Game Classes (Confirmed)
 
@@ -41,10 +48,17 @@ libs/             Reference DLLs for macOS builds (gitignored)
 ## Development Workflow
 
 **Dual-machine setup:**
-- **macOS** — code editing, builds (`dotnet build -p:CopyToMods=false`)
-- **Windows PC** — runs Schedule I with the mod, produces logs
+- **macOS** — code editing, builds, automated deploy via SSH
+- **Windows PC** (`jlall@192.168.1.141`) — runs Schedule I with the mod, produces logs
 
-**Loop:** Claude writes code → human builds on Mac → copies DLL to Windows → runs game → copies `Latest.log` back → Claude interprets and iterates.
+**Deploy script (`deploy.sh`):**
+```bash
+./deploy.sh          # Build + push DLL to PC
+./deploy.sh --tail   # Build + push + live-tail the log file
+./deploy.sh --logs   # Just pull Latest.log locally (no build)
+```
+
+**Loop:** Claude writes code → `./deploy.sh` builds and pushes DLL → human launches game on PC → `./deploy.sh --logs` pulls log back → Claude interprets and iterates.
 
 ## Key Conventions
 
@@ -64,10 +78,19 @@ All persistent knowledge lives in `docs/`. Every session must:
 5. **Update** `ROADMAP.md` checkboxes as work completes
 6. Never fabricate findings — evidence required
 
-## Build
+## Build & Deploy
 
+```bash
+./deploy.sh       # build + deploy in one step
+```
+
+Manual build only (no deploy):
 ```bash
 dotnet build ClientAssignmentOptimizer.csproj -p:CopyToMods=false
 ```
 
-Output: `bin/Debug/net6.0/ClientAssignmentOptimizer.dll` → copy to Windows `<GameDir>\Mods\`.
+Output: `bin/Debug/net6.0/ClientAssignmentOptimizer.dll`
+
+**Windows paths:**
+- Mods: `C:\Program Files (x86)\Steam\steamapps\common\Schedule I\Mods`
+- Logs: `C:\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\Latest.log`

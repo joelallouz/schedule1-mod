@@ -179,8 +179,6 @@ namespace ClientAssignmentOptimizer.Services
             }
         }
 
-        private static bool _prefLoggedOnce = false;
-
         private static string ReadPreferences(object custData)
         {
             try
@@ -197,25 +195,10 @@ namespace ClientAssignmentOptimizer.Services
                     var item = GetListItem(prefList, i);
                     if (item == null) continue;
 
-                    // Log type info once for debugging
-                    if (!_prefLoggedOnce)
-                    {
-                        ModLogger.Info($"[PrefDebug] Item type: {item.GetType().FullName}");
-                        var props = item.GetType().GetProperties(
-                            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                        foreach (var p in props.Take(20))
-                            ModLogger.Info($"[PrefDebug]   {p.PropertyType.Name} {p.Name}");
-                        _prefLoggedOnce = true;
-                    }
-
-                    // Try common property names for a readable value
-                    var name = GetPropString(item, "Name")
-                            ?? GetPropString(item, "name")
-                            ?? GetPropString(item, "PropertyName")
-                            ?? GetPropString(item, "Property")
-                            ?? GetPropString(item, "DisplayName");
-
-                    names.Add(name ?? item.ToString());
+                    // Preferred properties are Il2CppScheduleOne.Effects.Effect instances;
+                    // Name is the human-readable label.
+                    var name = GetPropString(item, "Name") ?? item.ToString();
+                    names.Add(name);
                 }
 
                 return string.Join(", ", names);

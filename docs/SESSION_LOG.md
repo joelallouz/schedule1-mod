@@ -396,3 +396,203 @@ After Phase 1 completion, began Phase 2 implementation:
 4. If IMGUI doesn't render (IL2CPP proxy issues), debug and iterate
 5. If panel works: mark Phase 2 roadmap items, add preferences column
 6. Preferences still untested but should work same as other CustomerData fields
+
+---
+
+## Session 4 — macOS Environment Setup & Automated Deploy (2026-04-23)
+
+### Goals
+- Clone repo to new macOS dev machine
+- Set up build environment (.NET 6 SDK)
+- Automate the build → deploy → log workflow (eliminate manual RDP file transfers)
+
+### What Happened
+
+**Repo cloned** to `/Users/joelallouz/dev/schedule1-mod`. All `libs/` DLLs present (committed to git).
+
+**.NET 6 SDK installed** via Homebrew (`brew install dotnet@6`, v6.0.136). PATH and DOTNET_ROOT added to `~/.zshrc`.
+
+**Build verified** — `dotnet build -p:CopyToMods=false` succeeds with 0 warnings, 0 errors.
+
+**SSH access established to Windows PC:**
+- Enabled OpenSSH Server on Windows (`Add-WindowsCapability`, `Start-Service sshd`)
+- Opened firewall port 22 (`netsh advfirewall`)
+- Generated Ed25519 key pair on Mac, installed public key in `C:\ProgramData\ssh\administrators_authorized_keys`
+- Key-based auth working: `ssh jlall@192.168.1.141` connects without password
+
+**`deploy.sh` created** — single script for build + deploy + log operations:
+- `./deploy.sh` — builds and SCPs DLL to `<GameDir>\Mods\`
+- `./deploy.sh --tail` — builds, deploys, then live-tails `Latest.log` via SSH
+- `./deploy.sh --logs` — pulls `Latest.log` to project dir via SSH
+
+**All three modes tested and working.**
+
+### Files Created
+- `deploy.sh` — automated build/deploy/log script
+
+### Files Modified
+- `CLAUDE.md` — updated workflow section with deploy.sh commands and Windows paths
+- `docs/TESTING.md` — rewritten to reflect automated deploy workflow, added SSH prereqs
+- `.gitignore` — added `Latest.log`
+- `docs/SESSION_LOG.md` — this entry
+
+### Decisions Made
+1. **SSH over SMB/RDP** — enables scripted file transfer and remote log tailing
+2. **Key-based auth** — no password prompts, works from scripts and Claude sessions
+3. **SCP with Windows backslash paths** — forward slashes and `/c/` style don't work with Windows OpenSSH; single-quoted Windows paths work for upload, `ssh type` used for log download
+4. **Log pulled via `ssh type` instead of `scp`** — more reliable quoting for Windows paths with spaces
+
+### Next Steps (for Session 5)
+1. Run `./deploy.sh` to push current DLL to PC
+2. Launch game, load save, press F9 — verify IMGUI panel appears with customer data
+3. Test sorting (click column headers), verify refresh (F10)
+4. If IMGUI doesn't render (IL2CPP proxy issues), pull logs with `./deploy.sh --logs` and debug
+5. If panel works: mark Phase 2 roadmap items, add preferences column
+
+---
+
+## Session 5 — First In-Game Test & Phase 2 Close (2026-04-23)
+
+### Goals
+- Deploy the Phase 2 build
+- Verify the F9 panel renders with live customer data
+- Finish the last Phase 2 item (preferences column) and close the phase
+
+### What Happened
+
+**Deployed build via `./deploy.sh`.** User launched game, loaded save, pressed F9 and F10. Reported everything worked — panel rendered, data displayed, refresh worked.
+
+**Pulled `Latest.log` for verification.** Clean run: no errors, no exceptions. Confirmed log lines:
+- `Initialization complete. Press F9 in-game to open customer panel.`
+- Three `Customer panel data refreshed.` entries (F9 open + F10 presses)
+
+**Preferences column was already wired** in all three layers (domain, service, UI) from Session 3 — the ROADMAP unchecked box was stale. The service's one-shot `[PrefDebug]` logging revealed the type:
+- `CustomerData.PreferredProperties` → `List<Il2CppScheduleOne.Effects.Effect>`
+- `Effect.Name` gives the human-readable label
+
+**Removed the `[PrefDebug]` discovery block** from `GameDataService.ReadPreferences` now that the type is known. Simplified to read `Effect.Name` directly with a single `item.ToString()` fallback.
+
+**Rebuilt and redeployed** the cleaned-up DLL. Build: 0 warnings, 0 errors.
+
+### Files Modified
+- `src/Services/GameDataService.cs` — removed `_prefLoggedOnce` debug block, collapsed preference-name lookup to the known good path (`Effect.Name`)
+- `docs/ROADMAP.md` — marked preferences item complete, marked Phase 2 complete
+- `docs/FINDINGS.md` — added Preferred Properties section (Effect type shape)
+- `docs/SESSION_LOG.md` — this entry
+
+### Decisions Made
+1. **Trim discovery code once the type is confirmed** — the `[PrefDebug]` one-shot dump was temporary scaffolding. Leaving it in would bloat logs on every future cold start with no benefit now that we know `Effect.Name` is the right field.
+2. **Don't wait for a second test before closing Phase 2** — user confirmed panel worked end-to-end, log is clean, and the preferences removal is cosmetic (unchanged semantics).
+
+### Phase 2: COMPLETE
+
+All exit criteria met. Panel renders, data is correct, sort works, refresh works, all five columns (name, assignment, spend, addiction, preferences) display live data.
+
+### Next Steps (for Session 6 — Phase 3: Reassignment)
+1. Test the reassignment API from Session 3's discovery:
+   - `Dealer.AddCustomer(Customer)` / `Dealer.RemoveCustomer(Customer)`
+   - `Customer.AssignDealer(Dealer)`
+2. Determine the minimal set of calls needed to keep both sides in sync
+3. Investigate network RPC variants (`AddCustomer_Server`, `AddCustomer_Client`) — may be needed for FishNet server authority
+4. Add reassignment UI: click a customer row → pick new dealer from a dropdown
+5. Validate MAX_CUSTOMERS (10) constraint before allowing reassignment
+6. Start with player-only reassignment (customer ↔ player) before dealer-to-dealer transfers
+
+---
+
+## Session 6 — Phase 3 MVP: Reassignment Works (Move-to-Player Verified) (2026-04-23)
+
+### Goals
+- Start Phase 3: implement and test customer reassignment
+- Pick a minimum call sequence that keeps both Customer.AssignedDealer and Dealer.AssignedCustomers in sync
+- Ship a usable row-select UI so the user can pick a customer and a target
+
+### What Happened
+
+**1. Built `ReassignmentService`** — encapsulates the three discovered mutation methods. Key design choices:
+- **Lookup by stable ID, not stored ref.** Re-resolves Customer by `NPC.ID` and Dealer by `fullName` at mutation time, walking `Customer.UnlockedCustomers` / `Dealer.AllPlayerDealers`. Prevents stale pointer bugs if the game reloads or caches rebuild.
+- **Method resolution by (Customer) parameter type.** `Dealer.RemoveCustomer` has both a `(Customer)` and `(String npcID)` overload — we explicitly grab the one whose parameter type matches `Il2CppScheduleOne.Economy.Customer` to avoid ambiguity.
+- **Exception isolation per invocation.** Each of RemoveCustomer / AddCustomer / AssignDealer is wrapped in its own try/catch, so partial progress is logged clearly rather than masked by a bubbling exception.
+- **Post-state logging.** After the sequence runs, we re-read `Customer.AssignedDealer` and both dealers' `AssignedCustomers.Count` and log them so we can verify what actually changed.
+
+**2. Wired row-select UI in CustomerPanelUI** — added a select-column with a per-row button (`►` when selected, blank otherwise), and an action bar above the table that appears when something is selected. Action bar shows "Move to Player" (if not already player-assigned) and one button per recruited dealer that isn't the current assignment. Full dealers show `(full)` suffix and are disabled via `GUI.enabled = false`.
+
+**3. First attempt — rect-based click detection — FAILED** with a critical IL2CPP finding. Initial implementation used `GUILayoutUtility.GetLastRect()` for click hit-testing on row labels. Symptom: panel opened with header saying "39 customers" but only the first row rendered, and that row was unclickable. Log revealed:
+```
+System.NotSupportedException: Method unstripping failed
+   at UnityEngine.GUILayoutGroup.GetLast()
+   at UnityEngine.GUILayoutUtility.GetLastRect()
+```
+The method is stripped in this IL2CPP build. The exception fired inside the render `foreach` after the first row and broke the IMGUI state for the rest of the frame. **Fix:** replaced the rect hit-test with a native `GUILayout.Button` in the selector column — clicks are handled by Unity's IMGUI directly, no stripped APIs involved. This is a project-wide rule now: **never use `GUILayoutUtility.GetLastRect()` in this mod**.
+
+**4. Second deploy — SUCCESS.** User tested two move-to-player reassignments:
+- **Jessi Waters:** Benji Coleman (10 customers) → PLAYER. Benji dropped to 9. Post-state `AssignedDealer = PLAYER`. ✓
+- **Dean Webster:** Molly Presley (10 customers) → PLAYER. Molly dropped to 9. Post-state `AssignedDealer = PLAYER`. ✓
+
+Both customers and both dealers in sync. No exceptions. Call sequence is correct.
+
+### Files Created
+- `src/Services/ReassignmentService.cs` — mutation service with ID-based lookup, per-step invocation, and post-state logging
+
+### Files Modified
+- `src/UI/CustomerPanelUI.cs` — added `_selectedNpcId` state, `DrawActionBar()`, selector column, per-row select button; removed original rect-based hit-test attempt
+- `docs/FINDINGS.md` — added `GetLastRect` stripping finding and verified move-to-player call sequence
+- `docs/ROADMAP.md` — Phase 3 checkboxes updated; remaining: move-to-dealer, save/reload persistence, multiplayer RPC decision
+- `docs/SESSION_LOG.md` — this entry
+
+### Decisions Made
+1. **Lookup by NPC.ID and Dealer.fullName, not stored references.** Cheap (one list walk) and robust against IL2CPP handle invalidation or post-refresh ref staleness.
+2. **Call order: RemoveCustomer → AddCustomer → AssignDealer.** Dealer-side mutations first so capacity transitions are explicit; AssignDealer last so Customer.AssignedDealer is authoritative regardless of what the dealer-side methods do internally. For move-to-player, AddCustomer is skipped (no target dealer).
+3. **Replace `GetLastRect`-based click detection with per-row Buttons.** One extra visual element per row, but native click handling and zero dependencies on stripped APIs.
+4. **Don't test move-to-dealer yet.** Move-to-player is the reversible, no-capacity-risk baseline. Confirm this works first before adding AddCustomer to the tested sequence.
+
+### Known Limitations / Remaining Unknowns
+- **Move-to-dealer (player → dealer, dealer A → dealer B) untested.** The `ReassignmentService.MoveToDealer` code path exists but is unverified. Likely needs the same sequence plus `newDealer.AddCustomer(customer)` in the middle.
+- **Save/reload persistence unverified.** User reported "worked" but didn't save and reload. A reassigned customer may or may not survive save serialization.
+- **Multiplayer/FishNet.** The game has `AddCustomer_Server` / `AddCustomer_Client` RPC variants. On singleplayer/host these direct method calls likely work; client-only code would probably need the RPC path.
+
+### Next Steps (for Session 7)
+1. Test move-to-dealer: player-assigned customer → recruited dealer with capacity
+2. Test dealer A → dealer B transfer
+3. Save the game, quit to menu, reload — verify reassignments persisted
+4. If persistence fails, investigate `Il2CppScheduleOne.Persistence.Datas.DealerData.AssignedCustomerIDs` — may need to be updated too
+5. Decide whether to wire up FishNet network RPCs or leave as host-only for v1
+
+### Session 6 — Continued: Move-to-Dealer and Save Persistence Verified
+
+**Second in-game test session (21:57 – 22:01):** User ran three more reassignment events across two full save/reload cycles and reported everything persisted as expected. Log analysis:
+
+**Round 1 (unsaved, reverted — expected):**
+- 21:47:26 — Jessi: Benji → PLAYER
+- 21:47:34 — Dean: Molly → PLAYER
+- 21:48 quit to Menu **without saving**
+- 21:56 reload: Jessi and Dean are back under their old dealers
+
+**Round 2 (saved, persisted):**
+- 21:57:19 — Jessi: Benji → PLAYER (redo)
+- 21:57:27 — Dean: Molly → PLAYER (redo)
+- 21:58 save + quit
+- 21:59 reload: Jessi is PLAYER (confirmed by the fact that the next reassignment's log line reads "Jessi Waters: PLAYER -> Benji Coleman", i.e. starting state was PLAYER — proves persistence)
+
+**Round 3 (move-to-dealer, saved, persisted):**
+- 21:59:47 — Jessi: PLAYER → Benji (Benji 9→10). First test of the `AddCustomer + AssignDealer(newDealer)` path.
+- 22:00 save + quit
+- 22:00:52 reload: user opened panel, visually confirmed Jessi was with Benji, closed.
+
+**Confirmed in this session:**
+1. **Player → Dealer path works.** `AddCustomer + AssignDealer(newDealer)` with no RemoveCustomer call (source is player, nothing to remove from). Benji's count correctly went 9 → 10.
+2. **Persistence works.** Reassignments survive full quit-to-menu → save-file-reload cycle when the user saves first. The game does NOT auto-save on mod actions — this is expected Schedule I behavior and shouldn't be considered a mod bug.
+3. **No exceptions across the whole session.** 5 mutation events, all clean.
+
+**Call sequences confirmed as correct minimum:**
+- Dealer A → PLAYER:  `A.RemoveCustomer(c)` + `c.AssignDealer(null)`
+- PLAYER → Dealer B:  `B.AddCustomer(c)` + `c.AssignDealer(B)`
+- Dealer A → Dealer B (inferred, not directly tested): `A.Remove + B.Add + AssignDealer(B)`
+
+**Phase 3 marked COMPLETE in ROADMAP.** Only deferred items are dealer-to-dealer direct transfer (trivial composition, low risk) and multiplayer RPC handling (not needed for singleplayer).
+
+### Next Steps (for Session 7 — Phase 4: Flagging and Filtering)
+1. Add a "flagged" indicator for high-value dealer-assigned customers (spend above a configurable threshold)
+2. Add summary stats: total projected player revenue vs total dealer revenue (using `CustomerData.GetAdjustedWeeklySpend` or min/max averages)
+3. Consider a filter toolbar: "show only flagged", "show only player-assigned", "show only [dealer]"
+4. Optional: quick-action "Poach all flagged" button to bulk-reassign high-value dealer customers to the player (with MAX_CUSTOMERS check — but player has no 10-customer limit; needs verification)

@@ -43,30 +43,39 @@
 
 ---
 
-## Phase 2: Read-Only Client View (Current)
+## Phase 2: Read-Only Client View — COMPLETE
 
 **Goal:** Display a list of all clients with their key stats. No mutation.
 
 - [x] Domain models mirroring discovered game structures *(Session 3: CustomerInfo, DealerInfo)*
 - [x] Service to enumerate customers and read their properties *(Session 3: GameDataService with cached reflection)*
-- [x] Basic UI panel (UnityEngine.GUI or IMGUI) *(Session 3: CustomerPanelUI — written, not yet tested at runtime)*
-- [ ] Display: name, assignment, weekly spend, addiction, preferences *(name/assignment/spend/addiction done, preferences not yet)*
+- [x] Basic UI panel (UnityEngine.GUI or IMGUI) *(Session 3: CustomerPanelUI)*
+- [x] Display: name, assignment, weekly spend, addiction, preferences *(Session 5: preferences confirmed rendering — `Il2CppScheduleOne.Effects.Effect.Name`)*
 - [x] Toggle panel with a hotkey *(Session 3: F9 toggle, F10 refresh)*
 
 **Exit criteria:** Player can press a key and see a list of all customers with correct data.
 
+**Completed:** Session 5 (2026-04-23)
+
 ---
 
-## Phase 3: Reassignment
+## Phase 3: Reassignment — COMPLETE (core functionality)
 
 **Goal:** Allow the player to reassign customers between dealers and themselves.
 
-- [ ] Discover how reassignment works in game code (partially done — need method name)
-- [ ] Implement reassignment action
-- [ ] Validate constraints (MAX_CUSTOMERS, cooldowns)
-- [ ] Error handling for failed reassignment
+- [x] Discover how reassignment works in game code *(Session 6: `Dealer.RemoveCustomer(customer)` + `Customer.AssignDealer(target)`)*
+- [x] Implement reassignment action *(Session 6: `ReassignmentService` + row-select UI + per-dealer action buttons)*
+- [x] Validate constraints (MAX_CUSTOMERS, cooldowns) *(Session 6: MAX_CUSTOMERS checked pre-add; no cooldowns observed)*
+- [x] Error handling for failed reassignment *(Session 6: per-invocation try/catch with log lines; returns false on partial failure)*
+- [x] Verify move-to-player (Dealer → Player) *(Session 6: Jessi × 2, Dean × 2 — clean)*
+- [x] Verify move-to-dealer (Player → Dealer) *(Session 6: Jessi → Benji, 9→10 — clean)*
+- [x] Verify save/reload persistence *(Session 6: changes survive full quit-to-menu + reload cycle when user saves first)*
+- [ ] Verify dealer A → dealer B direct transfer *(deferred — trivially composed from verified directions; likely works)*
+- [ ] Decide on multiplayer / FishNet RPC handling *(deferred — singleplayer works; co-op may need `AddCustomer_Server` RPC variant)*
 
-**Exit criteria:** Player can select a customer and move them to a different dealer or to themselves.
+**Exit criteria:** Player can select a customer and move them to a different dealer or to themselves. **Met.**
+
+**Completed:** Session 6 (2026-04-23)
 
 ---
 

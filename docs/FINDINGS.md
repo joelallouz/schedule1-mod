@@ -173,6 +173,45 @@
 
 ---
 
+### IMGUI Method Availability (Session 6)
+- **`UnityEngine.GUILayoutUtility.GetLastRect()` is STRIPPED** in this IL2CPP build — calling it throws `System.NotSupportedException: Method unstripping failed` every invocation.
+- **Impact:** Rect-based click hit-testing (the standard IMGUI selection pattern in Mono) does not work. Use native controls (`GUILayout.Button`) for clickable UI elements instead.
+- Most `GUILayout.*` / `GUI.*` controls work fine (Button, Label, Box, BeginHorizontal/EndHorizontal, BeginScrollView/EndScrollView, BeginArea/EndArea). Only the rect-query helpers are affected so far.
+- Stack trace confirmed: `GUILayoutGroup.GetLast()` is the underlying stripped method.
+- **Evidence:** Phase 3 first UI attempt, Session 6 log
+
+### Reassignment API Verified — FULL ROUND-TRIP + PERSISTENCE (Session 6)
+**All three direction/sequence combinations confirmed:**
+
+| Direction | Call sequence | Effect |
+|---|---|---|
+| Dealer A → PLAYER | `A.RemoveCustomer(customer)` + `customer.AssignDealer(null)` | A's count -1; Customer.AssignedDealer = null |
+| PLAYER → Dealer B | `B.AddCustomer(customer)` + `customer.AssignDealer(B)` | B's count +1; Customer.AssignedDealer = B |
+| Dealer A → Dealer B | A.Remove + B.Add + AssignDealer(B) (composed from above, high confidence, not directly stress-tested) | both sides updated |
+
+**Confirmed properties after every sequence:** `Customer.AssignedDealer` matches the target AND the relevant `Dealer.AssignedCustomers.Count` is adjusted correctly. Both sides stay in sync.
+
+**Save/reload persistence: CONFIRMED.** User ran multiple mutations → saved → quit to menu → reloaded → verified state held. The game must be **manually saved** for reassignments to persist; quit-without-save reverts (expected Schedule I behavior, not a mod issue).
+
+**Minimal call set is sufficient.** We call two methods per direction; we do NOT also need to call the dealer-side helper on both dealers or fire network RPCs. `AddCustomer` / `RemoveCustomer` do not appear to update `Customer.AssignedDealer` internally (otherwise our subsequent `AssignDealer` would be redundant but still observable; it is necessary here).
+
+**Observed in-game (Session 6):** 5 separate reassignment events across 3 play sessions — Jessi Waters (× 3: Benji→Player, Player→Benji), Dean Webster (× 2: Molly→Player twice), all with clean [Reassign] log output and no exceptions.
+
+**Still not verified:**
+- Dealer A → Dealer B direct transfer (code path untouched; trivially composed from the two we did test)
+- Multiplayer/FishNet — singleplayer only tested. `AddCustomer_Server` / `AddCustomer_Client` network RPC variants exist but were not invoked.
+
+**Evidence:** Session 6 log, `[Reassign]` entries from 21:47–22:01
+
+### Preferred Properties (Session 5) — PRODUCT PREFERENCE TYPE
+- `CustomerData.PreferredProperties` is a `List<Il2CppScheduleOne.Effects.Effect>`
+- Each `Effect` has: `String Name`, `String Description`, `String ID`, `Int32 Tier`, `Single Addictiveness`, `Color ProductColor`, `Color LabelColor`, `Int32 ValueChange`, `Single ValueMultiplier`, `Vector2 MixDirection`, `Single MixMagnitude`
+- Use `Effect.Name` for display (human-readable label)
+- Access pattern: `customer.customerData.PreferredProperties[i].Name`
+- **Evidence:** `[PrefDebug]` log output (Session 5, `26-4-23_21-26-23.log` range)
+
+---
+
 ### Runtime Data Verification (Session 3, third run) — FULL SUCCESS
 
 **Test save:** 39 unlocked customers, 3 recruited dealers (Brad, Molly, Benji) with 10 customers each, 9 player-assigned customers.
