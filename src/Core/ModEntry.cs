@@ -1,6 +1,4 @@
-using System;
 using System.Diagnostics;
-using Il2CppInterop.Runtime.Injection;
 using MelonLoader;
 using UnityEngine;
 using ClientAssignmentOptimizer.Discovery;
@@ -40,24 +38,6 @@ namespace ClientAssignmentOptimizer.Core
 
             // Apply Harmony patches for phone UI integration
             DealerAppPatches.Apply(HarmonyInstance);
-
-            // Spike (issue #10): can Il2CppInterop's ClassInjector accept a
-            // subclass of the generic IL2CPP base App<T>? If yes, we can build
-            // the optimizer as its own home-screen app rather than riding on
-            // DealerManagementApp. If this throws, the spike has answered "no"
-            // and we re-evaluate.
-            try
-            {
-                ClassInjector.RegisterTypeInIl2Cpp<OptimizerApp>();
-                ModLogger.Info("[Spike#10] OptimizerApp type registered with IL2CPP successfully.");
-            }
-            catch (Exception ex)
-            {
-                ModLogger.Error($"[Spike#10] OptimizerApp registration FAILED: {ex.GetType().Name}: {ex.Message}");
-                if (ex.InnerException != null)
-                    ModLogger.Error($"[Spike#10] Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
-                ModLogger.Error($"[Spike#10] Stack: {ex.StackTrace}");
-            }
 
             ModLogger.Info("Initialization complete. Press F9 in-game to open customer panel.");
         }
