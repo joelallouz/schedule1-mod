@@ -55,6 +55,30 @@
       <HintPath Condition="!Exists('$(LibsDir)/UnityEngine.InputLegacyModule.dll')">$(GameDir)/MelonLoader/Il2CppAssemblies/UnityEngine.InputLegacyModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+
+    <!-- Harmony for patching game methods -->
+    <Reference Include="0Harmony">
+      <HintPath Condition="Exists('$(LibsDir)/0Harmony.dll')">$(LibsDir)/0Harmony.dll</HintPath>
+      <HintPath Condition="!Exists('$(LibsDir)/0Harmony.dll')">$(GameDir)/MelonLoader/net6/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <!-- UnityEngine UI for uGUI (Button, Text, ScrollRect, Image, etc.) -->
+    <Reference Include="UnityEngine.UI">
+      <HintPath Condition="Exists('$(LibsDir)/UnityEngine.UI.dll')">$(LibsDir)/UnityEngine.UI.dll</HintPath>
+      <HintPath Condition="!Exists('$(LibsDir)/UnityEngine.UI.dll')">$(GameDir)/MelonLoader/Il2CppAssemblies/UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath Condition="Exists('$(LibsDir)/UnityEngine.UIModule.dll')">$(LibsDir)/UnityEngine.UIModule.dll</HintPath>
+      <HintPath Condition="!Exists('$(LibsDir)/UnityEngine.UIModule.dll')">$(GameDir)/MelonLoader/Il2CppAssemblies/UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath Condition="Exists('$(LibsDir)/UnityEngine.TextRenderingModule.dll')">$(LibsDir)/UnityEngine.TextRenderingModule.dll</HintPath>
+      <HintPath Condition="!Exists('$(LibsDir)/UnityEngine.TextRenderingModule.dll')">$(GameDir)/MelonLoader/Il2CppAssemblies/UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Source files -->

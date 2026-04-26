@@ -249,6 +249,172 @@
 
 ---
 
+### Phone UI System (Session 7) — APP FRAMEWORK FOR OPTIMIZER TAB
+
+**Architecture:** Each phone app extends `App<T>` → `PlayerSingleton<T>` → `MonoBehaviour`. Apps are singletons attached to the phone's scene hierarchy. The phone has a home screen with auto-generated icons for each app.
+
+**Phone class** (`Il2CppScheduleOne.UI.Phone.Phone`, `PlayerSingleton`):
+- `ActiveApp` (static, `GameObject`) — currently active app
+- `IsOpen` (bool) — whether phone is visible
+- `isHorizontal` (bool) — current orientation state
+- `isOpenable` (bool) — whether phone can be opened
+- `orientation_Vertical` / `orientation_Horizontal` (Transform) — target transforms for each orientation
+- `rotationTime` (float) — animation duration for orientation switch
+- `SetIsOpen(bool)` — open/close the phone
+- `SetIsHorizontal(bool)` — **triggers orientation animation** with coroutine `SetIsHorizontal_Process`
+- `RequestCloseApp()` — close the active app
+- `onPhoneOpened` / `onPhoneClosed` (Action) — lifecycle events
+- `closeApps` (Action) — event to close all apps
+- **Evidence:** PhoneUIDiscoveryService dump, Session 7 log
+
+**EOrientation enum:** `Horizontal = 0`, `Vertical = 1`
+
+**App<T> base class** (`Il2CppScheduleOne.UI.App`1`, extends `PlayerSingleton<T>`):
+- `AppName` (string) — display name on home screen
+- `IconLabel` (string) — icon label text
+- `AppIcon` (Sprite) — icon image
+- `Orientation` (EOrientation) — app's preferred orientation
+- `AvailableInTutorial` (bool)
+- `appContainer` (RectTransform) — the app's UI root container
+- `isOpen` (bool)
+- `Apps` (static List) — all registered app instances
+- `appIconButton` (Button) — home screen icon button
+- `GenerateHomeScreenIcon()` — creates icon on home screen
+- `SetOpen(bool)` — show/hide the app (virtual)
+- `Exit(ExitAction)` — close the app (virtual)
+- `OnPhoneOpened()` — lifecycle hook (virtual)
+- `SetNotificationCount(int)` — badge notifications
+- `Close()` — close the app
+- **Evidence:** PhoneUIDiscoveryService dump, Session 7 log
+
+**Existing phone apps** (all extend `App<T>`):
+- `DealerManagementApp` — dealer/customer management (our target)
+- `ContactsApp` — NPC contacts
+- `DeliveryApp` — delivery management
+- `JournalApp` — player journal
+- `MapApp` — in-game map
+- `MessagesApp` — messaging
+- `ProductManagerApp` — product management
+
+**HomeScreen** (`PlayerSingleton`):
+- `appIconContainer` (RectTransform) — where app icons go
+- `appIconPrefab` (GameObject) — template for app icons
+- `appIcons` (List) — list of icon buttons
+- `GenerateAppIcon(App<T>)` → Button — creates an icon for an app
+
+**AppsCanvas** (`PlayerSingleton`):
+- `canvas` (Canvas) — the Unity canvas for app rendering
+- `isOpen` (bool)
+- `SetIsOpen(bool)` — show/hide the app canvas
+- `PhoneOpened()` / `PhoneClosed()` — lifecycle hooks
+
+**DealerManagementApp specifics:**
+- `SelectedDealer` (Dealer) — currently selected dealer
+- `Content` (RectTransform) — main content area
+- `CustomerSelector` (CustomerSelector) — customer picker component
+- `_dropdown` (DropdownUI) — dealer dropdown
+- `AssignCustomerButton` (Button) — assign button
+- `BackButton` / `NextButton` (Button) — pagination
+- `CashLabel` / `CutLabel` / `HomeLabel` (Text) — dealer info labels
+- `CustomerEntries` (array) — customer display entries
+- `InventoryEntries` (array) — inventory display entries
+- `dealers` (List) — tracked dealers
+- `_isOpen` (bool)
+- `SetOpen(bool)` — virtual, opens/closes app
+- `Refresh()` — updates displayed data
+- `SetDisplayedDealer(Dealer)` — switch displayed dealer
+- `AddDealer(Dealer)` / `AddCustomer(Customer)` / `RemoveCustomer(Customer)` — modify display
+- `AssignCustomer()` — perform assignment
+- `RefreshDropdown()` — update dealer dropdown
+
+**CustomerSelector** (`MonoBehaviour`):
+- `ButtonPrefab` (GameObject) — template for customer buttons
+- `EntriesContainer` (RectTransform) — button container
+- `onCustomerSelected` (UnityEvent<Customer>) — selection event
+- `customerEntries` (List) — button entries
+- `entryToCustomer` (Dictionary) — maps entries to customers
+- `Open()` / `Close()` — show/hide selector
+- `CreateEntry(Customer)` — add a customer button
+- `CustomerSelected(Customer)` — handle selection
+
+**DropdownUI** (`extends Dropdown`):
+- `OnOpen` (Action) — event when dropdown opens
+- Wraps Unity's standard Dropdown with an open callback
+
+**Orientation switching mechanism:**
+- Each app declares preferred `Orientation` (Horizontal/Vertical)
+- `Phone.SetIsHorizontal(bool)` triggers animated rotation via coroutine
+- Phone has two Transform targets: `orientation_Vertical` and `orientation_Horizontal`
+- `rotationTime` controls animation speed
+
+**Implementation plan for optimizer tab (Option C):**
+1. Harmony-patch `DealerManagementApp.SetOpen(bool)` — inject "Optimize" toggle button
+2. When optimizer mode activated: call `Phone.Instance.SetIsHorizontal(true)` to flip to landscape
+3. Hide vanilla content, show our table view in the `Content` RectTransform
+4. When toggling back: `SetIsHorizontal(false)`, restore vanilla content
+5. Reassignment via dropdown per customer row, using existing `ReassignmentService`
+
+### Harmony Patching Verified (Session 7)
+- **Harmony patches work on IL2CPP game methods** via MelonLoader's built-in `HarmonyInstance`
+- `DealerManagementApp.SetOpen(bool)` successfully patched with a postfix
+- Method found via reflection: `_dealerAppType.GetMethod("SetOpen", new[] { typeof(bool) })`
+- Postfix receives `object __instance` and `bool open` — both accessible
+- `SetOpen(false)` fires once on init (app starts closed), then `SetOpen(true)` on open, `SetOpen(false)` on close
+- **Evidence:** Session 7 log — patch applied at init, OPENED/CLOSED logged on user interaction
+
+### uGUI GameObject Construction in IL2CPP (Session 8)
+- **`new GameObject(string, params Type[])` is NOT available** against Il2Cpp-stripped `UnityEngine.CoreModule.dll`. The exposed constructor is `GameObject(string, Il2CppReferenceArray<Il2CppSystem.Type>)` — a managed `Type[]` won't implicitly convert.
+- **Workaround:** build a 1-element `Il2CppReferenceArray<Il2CppSystem.Type>` and fill via `Il2CppType.Of<RectTransform>()`:
+  ```csharp
+  var types = new Il2CppReferenceArray<Il2CppSystem.Type>(1);
+  types[0] = Il2CppType.Of<RectTransform>();
+  var go = new GameObject(name, types);
+  ```
+- Why not `new GameObject(name)` + `AddComponent<RectTransform>()`? Unity refuses to add a RectTransform to a GameObject that already has a Transform. The params-constructor path is the only way to get RectTransform on a freshly-created GameObject.
+- **`UnityEngine.TextRenderingModule`** is a separate assembly from `UIModule`/`CoreModule` and must be referenced to use `Font` / `TextAnchor` / `FontStyle` / `HorizontalWrapMode` / `VerticalWrapMode` with `UnityEngine.UI.Text`. Pulled from `MelonLoader/Il2CppAssemblies/`.
+- **Evidence:** Session 8 build failures before the workaround, compile-clean after.
+
+### Narrowing Transform → RectTransform Casts Throw in IL2CPP (Session 8)
+- **`(RectTransform)foo.transform` and `someRectProp.GetValue(obj) as RectTransform`** both throw `InvalidCastException: Unable to cast object of type 'UnityEngine.Transform' to type 'UnityEngine.RectTransform'` at runtime in IL2CPP, even when the underlying Il2Cpp object is a RectTransform. Il2CppInterop wraps the return value as the declared static type (`Transform`) and the narrowing cast fails before any C# `as`/try-catch can intercept.
+- **Fix:** always resolve a `RectTransform` via the Unity component system, never via a cast:
+  ```csharp
+  var rt = go.GetComponent<RectTransform>();
+  // not: var rt = (RectTransform)go.transform;
+  ```
+- Same applies to reflection reads. Read the property as its base Unity type (`Transform`) and then GetComponent:
+  ```csharp
+  var t = ReflectGet<Transform>(obj, "appContainer");
+  var rt = t?.GetComponent<RectTransform>();
+  ```
+- Related: `Il2CppObjectBase.TryCast<T>()` CAN do this safely when `T` is a derived Il2Cpp type — but only if you have the Il2CppObjectBase in hand before the narrowing cast. Reflection's `PropertyInfo.GetValue` already performs the failing cast internally, so you can't TryCast your way out of a `ReflectGet<RectTransform>(...)`.
+- **Evidence:** Session 8 stack traces — throws at `CreateButton` / `InjectToggleButton` on explicit `(RectTransform)...transform` lines.
+
+### PlayerSingleton<T>.Instance via Reflection (Session 8)
+- **`Phone.Instance` lives on the generic base `PlayerSingleton<T>`**, not on `Phone` itself. `GetProperty("Instance", Public | Static | FlattenHierarchy)` on the `Phone` Il2Cpp type does NOT find it — FlattenHierarchy doesn't consistently cross generic-base statics in Il2CppInterop.
+- **Fix:** if the direct lookup fails, walk `type.BaseType` up the chain and search each for `Instance` (no FlattenHierarchy needed at that level). Same pattern likely needed for other PlayerSingleton/NetworkSingleton statics.
+- **Evidence:** Session 8 "Phone not resolved" warning, fixed in `ResolvePhone()` after switching to the base-walk fallback.
+
+### Phase 3 Dealer-to-Dealer Transfer Confirmed (Session 8)
+- **Eugene Buckley (Brad → Molly, 23:51:01, Session 8):** first in-game dealer-to-dealer direct transfer test. Call sequence `Brad.RemoveCustomer(eugene) + Molly.AddCustomer(eugene) + eugene.AssignDealer(Molly)` succeeded; both dealers' counts adjusted (Brad 9→8, Molly 8→9) and customer's `AssignedDealer` = Molly. This closes the last deferred item from Phase 3.
+
+### ScreenSpaceOverlay Canvas Needs RectTransform-from-Construction (Session 9)
+- **`new GameObject("OptimizerCanvas")` + `AddComponent<Canvas>()` does NOT auto-promote the GO's `Transform` to a `RectTransform` in IL2CPP-stripped Unity.** Canvas's `[RequireComponent(typeof(RectTransform))]` semantics that work in stock Unity Editor do not reliably trigger here — the Canvas ends up backed by a plain `Transform`, ScreenSpaceOverlay never sizes itself to screen, and nothing renders even with `sortingOrder=32000` and `overrideSorting=true`.
+- **Fix:** construct the Canvas GameObject the same way as any other uGUI element — via the `NewUIGameObject` helper that uses the `(string, Il2CppReferenceArray<Il2CppSystem.Type>)` constructor with `Il2CppType.Of<RectTransform>()`. With a RectTransform present at Canvas init, ScreenSpaceOverlay correctly auto-sizes via `RectTransform.SetSizeWithCurrentAnchors`-equivalent internal logic.
+- **Evidence:** Session 9 diagnostic log line `Canvas built: enabled=True, sortingOrder=32000, rectSize=3440x1440, screen=3440x1440, canvasActive=True` after the fix; pre-fix runs (Session 8) showed an invisible canvas with no diagnostic line yet captured.
+- **Generalization of the Session 8 finding:** the "Unity refuses to add RectTransform to a GO that already has Transform" rule applies to ALL uGUI roots, not just visual elements. Use `NewUIGameObject` for top-level Canvases too, not just children.
+
+### Inner-Text raycastTarget Blocks Parent Button Clicks (Session 9)
+- **A uGUI Button built as `Image + Button` with a Text child silently swallows clicks if the Text's `raycastTarget` is left at the default (`true`).** The inner Text becomes the topmost graphic over the Image, so the GraphicRaycaster hits the Text first; the Text has no Button component, the click is consumed there, and the parent Button's `onClick` never fires.
+- **Fix:** in any helper that creates a Button-with-label, set `txt.raycastTarget = false` on the inner Text. Same rule for any decorative Title/header/instructional Text that overlaps a clickable Button — set its `raycastTarget` to false too, otherwise it'll mask the button beneath it.
+- **Evidence:** Session 9 — Close button at panel top-right was non-functional because the wide Title text spanned the same vertical band. Reassign-row buttons (lower in the scroll) worked because no Text overlapped them. Once `raycastTarget=false` was applied to inner button Texts and the Title Text, every button across the panel became clickable, including Close.
+
+### Panels Under Dealer-App `appContainer` Need `LayoutElement.ignoreLayout=true` (Session 9)
+- **Adding a full-stretch (`anchorMin=0, anchorMax=1, offset=0`) child to `Il2CppScheduleOne.UI.Phone.Messages.DealerManagementApp.appContainer` produces an empty/invisible panel** unless the child opts out of the parent's layout. The dealer-app's appContainer has some LayoutGroup-type behavior that overwrites the child's RectTransform values during the layout pass, even when the child is at the correct sibling slot for sort order.
+- **Fix:** add a `LayoutElement` to the panel and set `ignoreLayout = true`. Combined with `SetAsLastSibling` on the panel (run from `EnterOptimizerMode`, after the panel is shown), the panel renders correctly at full appContainer rect.
+- **Evidence:** Session 9 diagnostic showed the panel sized correctly at 655×1201 (matching appContainer) and active in hierarchy, but visually empty — until both `ignoreLayout=true` and `SetAsLastSibling` were applied. Sibling list at the time: `[0]Background(A) [1]CustomerSelector(I, vanilla) [2]OptimizerPanel(A) [3]OptimizerToggle(A)`. After the fix, the user-confirmed panel renders the full table inside the phone like a native app.
+
+---
+
 ## Suspected
 
 - Reassignment likely requires calling both `Dealer.RemoveCustomer()` / `Dealer.AddCustomer()` AND `Customer.AssignDealer()` to keep both sides in sync. The network RPC variants suggest this is a multiplayer-aware operation.

@@ -23,6 +23,11 @@ namespace ClientAssignmentOptimizer.Discovery
             NPCTypeScanService.DumpNPCBaseClass();
             NPCTypeScanService.SearchAssignmentMethods();
 
+            // Session 7: Phone UI system discovery
+            PhoneUIDiscoveryService.SearchPhoneTypes();
+            PhoneUIDiscoveryService.DumpDealerManagementApp();
+            PhoneUIDiscoveryService.DumpPhoneInfrastructure();
+
             ModLogger.Info("=== Discovery Phase Complete ===");
         }
 

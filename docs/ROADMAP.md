@@ -70,12 +70,34 @@
 - [x] Verify move-to-player (Dealer → Player) *(Session 6: Jessi × 2, Dean × 2 — clean)*
 - [x] Verify move-to-dealer (Player → Dealer) *(Session 6: Jessi → Benji, 9→10 — clean)*
 - [x] Verify save/reload persistence *(Session 6: changes survive full quit-to-menu + reload cycle when user saves first)*
-- [ ] Verify dealer A → dealer B direct transfer *(deferred — trivially composed from verified directions; likely works)*
+- [x] Verify dealer A → dealer B direct transfer *(Session 8: Eugene Buckley Brad → Molly, clean; both counts adjusted)*
 - [ ] Decide on multiplayer / FishNet RPC handling *(deferred — singleplayer works; co-op may need `AddCustomer_Server` RPC variant)*
 
 **Exit criteria:** Player can select a customer and move them to a different dealer or to themselves. **Met.**
 
 **Completed:** Session 6 (2026-04-23)
+
+---
+
+## Phase 3.5: Phone UI Integration — COMPLETE
+
+**Goal:** Replace the IMGUI hotkey panel with an in-phone optimizer tab on the existing DealerManagementApp.
+
+- [x] Discover phone UI system (Session 7 — Phone, App<T>, HomeScreen, EOrientation)
+- [x] Harmony-patch `DealerManagementApp.SetOpen(bool)` — postfix firing verified (Session 7)
+- [x] Add `UnityEngine.UI` / `UIModule` / `TextRenderingModule` references for uGUI (Session 7–8)
+- [x] Build `OptimizerTab` class — toggle button, scrollable table, reassign popup (Session 8)
+- [x] Verify reassignment end-to-end (Session 8 — 10 reassignments across all three directions, zero exceptions)
+- [x] Readable font sizes on in-game display (Session 8 — bumped 12–13 → 18–28, then 22–42 on fullscreen canvas)
+- [x] Close button reachable while optimizer mode is active (Session 8 — now an in-panel button)
+- [x] **Pivoted:** dropped `Phone.SetIsHorizontal` — it rotates the phone model but not its app content, which caused the panel to render sideways. Replaced with a standalone fullscreen `Canvas` (ScreenSpaceOverlay, sortingOrder 32000).
+- [x] **Canvas render fix (Session 9, 2026-04-25):** two bugs landed together — (1) Canvas GameObject was constructed via `new GameObject(name)` then `AddComponent<Canvas>()`, but in IL2CPP Unity refuses to swap the existing `Transform` for a `RectTransform`, leaving ScreenSpaceOverlay with no rect to size; (2) `_optimizerRootGO.SetActive(false)` at end of `BuildOptimizerPanel` left the panel permanently inactive while only the canvas was being toggled. Fixed by constructing the canvas via `NewUIGameObject(...)` (RectTransform from creation) and toggling visibility on the canvas GO instead of the inner root. Diagnostic confirmed `rectSize=3440×1440` matching screen.
+- [x] **Re-parented inside phone (Session 9 cont):** dropped the standalone fullscreen canvas; panel parents directly under `appContainer` so it inherits the phone's rect, render mode, and sort order — renders inside the phone like a native app. Required `LayoutElement.ignoreLayout=true` and `SetAsLastSibling` to override the dealer app's container layout. Vanilla content hides while open, restores on close.
+- [x] **Header sort + merged spend column (Session 9 cont):** column headers are now Buttons; click cycles asc/desc with ▲/▼ indicator. Sort verified live in-game on column 3 ("Weekly $"). Merged Min $ + Max $ → single "Weekly $" column showing `$min – $max` range to clarify what the values represent and free up horizontal space.
+- [x] **Landscape mode (Session 9 cont):** `Phone.SetIsHorizontal(true)` on enter rotates the phone model; panel applies `localRotation = Euler(0, 0, -90)` + sizeDelta swap to counter-rotate so text reads correctly in the landscape phone. Initial +90 rotation was upside-down (combined +180°), corrected to -90.
+- [x] **Font bump for in-phone readability (Session 9 cont):** Title 28→36, headers 22→28, rows 18→26, button text 18→24; row height 44→58; close button 140×40→160×52; layout offsets adjusted to fit.
+
+**Exit criteria:** Player opens phone → DealerApp → taps Optimize → phone rotates to landscape and shows the optimizer panel with the customer table and reassignment dropdowns → taps a column header to sort → taps a reassign dropdown to reassign → taps Close → returns to vanilla dealer view. **Met (Session 9, 2026-04-25).**
 
 ---
 

@@ -8,12 +8,9 @@ A MelonLoader mod for **Schedule I** (Unity IL2CPP, v0.4.5f2, Unity 2022.3.62f2)
 
 ## Current Phase
 
-**Phase 3: Reassignment — COMPLETE (Session 6, 2026-04-23)** — Row-select UI + `ReassignmentService` working. Verified in-game:
-- Dealer → Player: `Dealer.RemoveCustomer(customer)` + `Customer.AssignDealer(null)` ✓
-- Player → Dealer: `Dealer.AddCustomer(customer)` + `Customer.AssignDealer(dealer)` ✓
-- Save/reload persistence across quit-to-menu → reload cycle ✓
+**Phone UI Integration (in progress, Session 7–8)** — Pivoted from standalone IMGUI panel to integrating into the game's phone dealer management app. Harmony patch on `DealerManagementApp.SetOpen(bool)` is verified firing. Next: build the optimizer tab UI (landscape table view with reassignment dropdowns).
 
-Deferred (low risk): dealer A → dealer B direct transfer, FishNet multiplayer RPCs. Next: Phase 4 (Flagging and Filtering).
+**Prior phases:** Phase 2 (read-only panel) ✓, Phase 3 (reassignment) ✓, both verified in-game.
 
 **⚠️ IL2CPP gotcha:** `UnityEngine.GUILayoutUtility.GetLastRect()` is stripped — throws `NotSupportedException: Method unstripping failed`. Use `GUILayout.Button` for clickable UI elements instead.
 

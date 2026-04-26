@@ -2,6 +2,7 @@ using System.Diagnostics;
 using MelonLoader;
 using UnityEngine;
 using ClientAssignmentOptimizer.Discovery;
+using ClientAssignmentOptimizer.Patches;
 using ClientAssignmentOptimizer.UI;
 
 [assembly: MelonInfo(typeof(ClientAssignmentOptimizer.Core.ModEntry), "Client Assignment Optimizer", "0.1.0", "joelallouz")]
@@ -30,6 +31,9 @@ namespace ClientAssignmentOptimizer.Core
             {
                 DiscoveryOrchestrator.Run();
             }
+
+            // Apply Harmony patches for phone UI integration
+            DealerAppPatches.Apply(HarmonyInstance);
 
             ModLogger.Info("Initialization complete. Press F9 in-game to open customer panel.");
         }
