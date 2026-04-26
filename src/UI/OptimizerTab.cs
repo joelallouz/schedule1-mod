@@ -34,6 +34,9 @@ namespace ClientAssignmentOptimizer.UI
         private static GameObject _optimizerPanelGO;
         private static GameObject _tableContentGO;
         private static GameObject _reassignPopupGO;
+        private static GameObject _filterButtonGO;
+        private static Text _filterButtonLabel;
+        private static GameObject _filterPopupGO;
 
         private static bool _isOptimizerActive;
         private static Font _cachedFont;
@@ -42,6 +45,11 @@ namespace ClientAssignmentOptimizer.UI
         // -1 = no sort (insertion order). Otherwise an index into ColumnSortKeys.
         private static int _sortColumn = -1;
         private static bool _sortAscending = true;
+
+        // ---- Filter state (in-memory only, persists across optimizer reopen) ----
+        private enum FilterMode { All, Flagged, Player, ByDealer }
+        private static FilterMode _filterMode = FilterMode.All;
+        private static string _filterDealerName;
 
         // 7 columns. ★ at index 0 (sortable: flagged-first, MaxWeeklySpend tie-break).
         // Reassign at index 6 is the only non-sortable column.
@@ -92,6 +100,7 @@ namespace ClientAssignmentOptimizer.UI
                     _isOptimizerActive = false;
                 }
                 CloseReassignPopup();
+                CloseFilterPopup();
             }
             catch (Exception ex)
             {
@@ -241,10 +250,14 @@ namespace ClientAssignmentOptimizer.UI
             var titleTxt = title.GetComponent<Text>();
             if (titleTxt != null) titleTxt.raycastTarget = false;
 
-            // Header row (stretches across the panel just below the title).
+            // Toolbar (filter / threshold widgets), header below it. GetOrCreateToolbar
+            // pushes the header + scroll view down to make room.
+            BuildFilterWidget();
+
+            // Header row (stretches across the panel just below the toolbar).
             var header = NewUIGameObject("Header");
             header.transform.SetParent(_optimizerPanelGO.transform, false);
-            AnchorTopStretch(header.GetComponent<RectTransform>(), -64f, 44f);
+            AnchorTopStretch(header.GetComponent<RectTransform>(), -88f, 44f);
             var headerBg = header.AddComponent<Image>();
             headerBg.color = new Color(0.18f, 0.18f, 0.22f, 1f);
             headerBg.raycastTarget = false;
@@ -258,7 +271,7 @@ namespace ClientAssignmentOptimizer.UI
             scrollRT.anchorMin = new Vector2(0f, 0f);
             scrollRT.anchorMax = new Vector2(1f, 1f);
             scrollRT.offsetMin = new Vector2(8f, 68f);
-            scrollRT.offsetMax = new Vector2(-8f, -116f);
+            scrollRT.offsetMax = new Vector2(-8f, -132f);
             var scrollBg = scrollGO.AddComponent<Image>();
             scrollBg.color = new Color(0.12f, 0.12f, 0.14f, 1f);
             var scrollRect = scrollGO.AddComponent<ScrollRect>();
@@ -310,6 +323,161 @@ namespace ClientAssignmentOptimizer.UI
             closeRT.sizeDelta = new Vector2(160f, 52f);
 
             _optimizerPanelGO.SetActive(false);
+        }
+
+        // =====================================================================
+        // Toolbar (filter + threshold widgets)
+        // =====================================================================
+
+        // Idempotent: returns the existing Toolbar child of _optimizerPanelGO if
+        // present, otherwise creates one and pushes Header + ScrollView down to
+        // make room. Issue C and Issue D both call this — whichever runs first
+        // creates the toolbar, the other reuses it.
+        private static GameObject GetOrCreateToolbar()
+        {
+            if (_optimizerPanelGO == null) return null;
+            var existing = _optimizerPanelGO.transform.Find("Toolbar");
+            if (existing != null) return existing.gameObject;
+
+            var toolbar = NewUIGameObject("Toolbar");
+            toolbar.transform.SetParent(_optimizerPanelGO.transform, false);
+            AnchorTopStretch(toolbar.GetComponent<RectTransform>(), -52f, 36f);
+            var bg = toolbar.AddComponent<Image>();
+            bg.color = new Color(0.14f, 0.14f, 0.18f, 1f);
+            bg.raycastTarget = false;
+            return toolbar;
+        }
+
+        private static void BuildFilterWidget()
+        {
+            var toolbar = GetOrCreateToolbar();
+            if (toolbar == null) return;
+
+            _filterButtonGO = CreateButton(toolbar.transform, "FilterBtn", FilterButtonLabel(),
+                () => OpenFilterPopup());
+            var rt = _filterButtonGO.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.offsetMin = new Vector2(4f, 4f);
+            rt.offsetMax = new Vector2(-4f, -4f);
+            _filterButtonLabel = _filterButtonGO.GetComponentInChildren<Text>();
+        }
+
+        private static string FilterButtonLabel()
+        {
+            switch (_filterMode)
+            {
+                case FilterMode.Flagged:  return "Show: Flagged  ▾";
+                case FilterMode.Player:   return "Show: Player  ▾";
+                case FilterMode.ByDealer: return $"Show: {_filterDealerName ?? "?"}  ▾";
+                default:                  return "Show: All  ▾";
+            }
+        }
+
+        private static void OpenFilterPopup()
+        {
+            CloseFilterPopup();
+            if (_optimizerPanelGO == null) return;
+
+            var dealers = GameDataService.GetAllDealers();
+            var recruited = new List<DealerInfo>();
+            foreach (var d in dealers) if (d.IsRecruited) recruited.Add(d);
+
+            float rowH = 56f;
+            int rowCount = 1 /*title*/ + 3 /*All, Flagged, Player*/ + recruited.Count + 1 /*cancel*/;
+            float height = 24f + rowCount * (rowH + 8f);
+
+            _filterPopupGO = NewUIGameObject("FilterPopup");
+            _filterPopupGO.transform.SetParent(_optimizerPanelGO.transform, false);
+            var popupRT = _filterPopupGO.GetComponent<RectTransform>();
+            popupRT.anchorMin = new Vector2(0.05f, 0.5f);
+            popupRT.anchorMax = new Vector2(0.95f, 0.5f);
+            popupRT.pivot = new Vector2(0.5f, 0.5f);
+            popupRT.anchoredPosition = Vector2.zero;
+            popupRT.sizeDelta = new Vector2(0f, height);
+            var bg = _filterPopupGO.AddComponent<Image>();
+            bg.color = new Color(0.06f, 0.06f, 0.08f, 0.98f);
+            bg.raycastTarget = true;
+
+            float y = -12f;
+            var titleGO = CreateText(_filterPopupGO.transform, "Title", "Filter customers by:",
+                26, TextAnchor.MiddleCenter);
+            var titleRT = titleGO.GetComponent<RectTransform>();
+            titleRT.anchorMin = new Vector2(0f, 1f);
+            titleRT.anchorMax = new Vector2(1f, 1f);
+            titleRT.pivot = new Vector2(0.5f, 1f);
+            titleRT.anchoredPosition = new Vector2(0f, y);
+            titleRT.sizeDelta = new Vector2(-16f, rowH);
+            var titleTxt = titleGO.GetComponent<Text>();
+            if (titleTxt != null) titleTxt.raycastTarget = false;
+            y -= (rowH + 8f);
+
+            void AddOption(string label, Action onSelect, bool active)
+            {
+                var btn = CreateButton(_filterPopupGO.transform, $"Btn_{label}", label, onSelect);
+                if (active) SetButtonColor(btn, new Color(0.20f, 0.55f, 0.30f, 1f));
+                PositionPopupButton(btn, y, rowH);
+                y -= (rowH + 8f);
+            }
+
+            AddOption("All",          () => SetFilter(FilterMode.All, null),     _filterMode == FilterMode.All);
+            AddOption("Flagged only", () => SetFilter(FilterMode.Flagged, null), _filterMode == FilterMode.Flagged);
+            AddOption("Player",       () => SetFilter(FilterMode.Player, null),  _filterMode == FilterMode.Player);
+            foreach (var d in recruited)
+            {
+                var name = d.FullName;
+                bool isCurrent = _filterMode == FilterMode.ByDealer && _filterDealerName == name;
+                AddOption(name, () => SetFilter(FilterMode.ByDealer, name), isCurrent);
+            }
+
+            var cancel = CreateButton(_filterPopupGO.transform, "BtnCancel", "Cancel", () => CloseFilterPopup());
+            SetButtonColor(cancel, new Color(0.4f, 0.2f, 0.2f, 1f));
+            PositionPopupButton(cancel, y, rowH);
+        }
+
+        private static void CloseFilterPopup()
+        {
+            if (_filterPopupGO != null)
+            {
+                GameObject.Destroy(_filterPopupGO);
+                _filterPopupGO = null;
+            }
+        }
+
+        private static void SetFilter(FilterMode mode, string dealerName)
+        {
+            _filterMode = mode;
+            _filterDealerName = dealerName;
+            if (_filterButtonLabel != null) _filterButtonLabel.text = FilterButtonLabel();
+            CloseFilterPopup();
+            RefreshTable();
+        }
+
+        private static List<CustomerInfo> ApplyFilter(List<CustomerInfo> input)
+        {
+            if (_filterMode == FilterMode.All) return input;
+            var result = new List<CustomerInfo>();
+            foreach (var c in input)
+            {
+                bool keep;
+                switch (_filterMode)
+                {
+                    case FilterMode.Flagged:
+                        keep = c.ShouldBePlayer;
+                        break;
+                    case FilterMode.Player:
+                        keep = c.IsPlayerAssigned;
+                        break;
+                    case FilterMode.ByDealer:
+                        keep = !c.IsPlayerAssigned && string.Equals(c.AssignedDealerName, _filterDealerName, StringComparison.Ordinal);
+                        break;
+                    default:
+                        keep = true;
+                        break;
+                }
+                if (keep) result.Add(c);
+            }
+            return result;
         }
 
         private static void BuildHeaderCells(Transform parent)
@@ -433,12 +601,15 @@ namespace ClientAssignmentOptimizer.UI
             foreach (var c in sorted) if (c.ShouldBePlayer) flaggedCount++;
             ModLogger.Info($"[OptimizerTab] {flaggedCount} of {sorted.Count} customers flagged (threshold ${ModConfig.SpendThreshold}).");
 
-            foreach (var c in sorted)
+            var visible = ApplyFilter(sorted);
+
+            foreach (var c in visible)
             {
                 AddCustomerRow(c, recruited);
             }
 
-            ModLogger.Info($"[OptimizerTab] Table refreshed: {sorted.Count} customers, {recruited.Count} recruited dealers (sortCol={_sortColumn}, asc={_sortAscending}).");
+            string filterLabel = _filterMode == FilterMode.ByDealer ? $"{_filterMode}:{_filterDealerName}" : _filterMode.ToString();
+            ModLogger.Info($"[OptimizerTab] Table refreshed: {visible.Count} of {sorted.Count} customers shown (filter={filterLabel}), {recruited.Count} recruited dealers (sortCol={_sortColumn}, asc={_sortAscending}).");
         }
 
         private static List<CustomerInfo> SortCustomers(List<CustomerInfo> input)
@@ -861,11 +1032,14 @@ namespace ClientAssignmentOptimizer.UI
         private static void DisposeOwnedUI()
         {
             CloseReassignPopup();
+            CloseFilterPopup();
             if (_optimizerPanelGO != null) { GameObject.Destroy(_optimizerPanelGO); _optimizerPanelGO = null; }
             if (_toggleButtonGO != null) { GameObject.Destroy(_toggleButtonGO); _toggleButtonGO = null; }
             _tableContentGO = null;
             _vanillaContentGO = null;
             _appContainer = null;
+            _filterButtonGO = null;
+            _filterButtonLabel = null;
             _isOptimizerActive = false;
         }
 
