@@ -38,6 +38,7 @@ namespace ClientAssignmentOptimizer.UI
         private static Text _filterButtonLabel;
         private static GameObject _filterPopupGO;
         private static Text _thresholdLabelText;
+        private static Text _summaryText;
 
         private static bool _isOptimizerActive;
         private static Font _cachedFont;
@@ -272,7 +273,7 @@ namespace ClientAssignmentOptimizer.UI
             var scrollRT = scrollGO.GetComponent<RectTransform>();
             scrollRT.anchorMin = new Vector2(0f, 0f);
             scrollRT.anchorMax = new Vector2(1f, 1f);
-            scrollRT.offsetMin = new Vector2(8f, 68f);
+            scrollRT.offsetMin = new Vector2(8f, 100f);
             scrollRT.offsetMax = new Vector2(-8f, -132f);
             var scrollBg = scrollGO.AddComponent<Image>();
             scrollBg.color = new Color(0.12f, 0.12f, 0.14f, 1f);
@@ -324,7 +325,54 @@ namespace ClientAssignmentOptimizer.UI
             closeRT.anchoredPosition = new Vector2(-12f, 12f);
             closeRT.sizeDelta = new Vector2(160f, 52f);
 
+            BuildSummaryStrip();
+
             _optimizerPanelGO.SetActive(false);
+        }
+
+        private static void BuildSummaryStrip()
+        {
+            if (_optimizerPanelGO == null) return;
+
+            var strip = NewUIGameObject("SummaryStrip");
+            strip.transform.SetParent(_optimizerPanelGO.transform, false);
+            var rt = strip.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 60f);
+            rt.sizeDelta = new Vector2(-180f, 32f);
+
+            _summaryText = strip.AddComponent<Text>();
+            _summaryText.text = "";
+            _summaryText.font = GetFont();
+            _summaryText.fontSize = 22;
+            _summaryText.color = new Color(0.85f, 0.85f, 0.85f, 1f);
+            _summaryText.alignment = TextAnchor.MiddleLeft;
+            _summaryText.horizontalOverflow = HorizontalWrapMode.Overflow;
+            _summaryText.raycastTarget = false;
+        }
+
+        // Summary numbers are over the FULL customer set, not the filtered view —
+        // the summary tells the player their overall situation, not what they're
+        // currently looking at. Filtering to "Flagged only" should not zero the
+        // Player number.
+        private static void UpdateSummary(List<CustomerInfo> all)
+        {
+            if (_summaryText == null) return;
+
+            float playerWeekly = 0f;
+            float dealerWeekly = 0f;
+            float flagPotential = 0f;
+            foreach (var c in all)
+            {
+                float spend = c.MaxWeeklySpend;
+                if (c.IsPlayerAssigned) playerWeekly += spend;
+                else                    dealerWeekly += spend;
+                if (c.ShouldBePlayer)   flagPotential += spend;
+            }
+
+            _summaryText.text = $"Player ${(int)playerWeekly:N0}/wk  ·  Dealers ${(int)dealerWeekly:N0}/wk  ·  Flag ${(int)flagPotential:N0}/wk";
         }
 
         // =====================================================================
@@ -668,6 +716,8 @@ namespace ClientAssignmentOptimizer.UI
             {
                 AddCustomerRow(c, recruited);
             }
+
+            UpdateSummary(customers);
 
             string filterLabel = _filterMode == FilterMode.ByDealer ? $"{_filterMode}:{_filterDealerName}" : _filterMode.ToString();
             ModLogger.Info($"[OptimizerTab] Table refreshed: {visible.Count} of {sorted.Count} customers shown (filter={filterLabel}), {recruited.Count} recruited dealers (sortCol={_sortColumn}, asc={_sortAscending}).");
@@ -1102,6 +1152,7 @@ namespace ClientAssignmentOptimizer.UI
             _filterButtonGO = null;
             _filterButtonLabel = null;
             _thresholdLabelText = null;
+            _summaryText = null;
             _isOptimizerActive = false;
         }
 
