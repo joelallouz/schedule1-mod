@@ -37,6 +37,7 @@ namespace ClientAssignmentOptimizer.UI
         private static GameObject _filterButtonGO;
         private static Text _filterButtonLabel;
         private static GameObject _filterPopupGO;
+        private static Text _thresholdLabelText;
 
         private static bool _isOptimizerActive;
         private static Font _cachedFont;
@@ -253,6 +254,7 @@ namespace ClientAssignmentOptimizer.UI
             // Toolbar (filter / threshold widgets), header below it. GetOrCreateToolbar
             // pushes the header + scroll view down to make room.
             BuildFilterWidget();
+            BuildThresholdWidget();
 
             // Header row (stretches across the panel just below the toolbar).
             var header = NewUIGameObject("Header");
@@ -450,6 +452,65 @@ namespace ClientAssignmentOptimizer.UI
             _filterDealerName = dealerName;
             if (_filterButtonLabel != null) _filterButtonLabel.text = FilterButtonLabel();
             CloseFilterPopup();
+            RefreshTable();
+        }
+
+        private static void BuildThresholdWidget()
+        {
+            var toolbar = GetOrCreateToolbar();
+            if (toolbar == null) return;
+
+            var container = NewUIGameObject("ThresholdWidget");
+            container.transform.SetParent(toolbar.transform, false);
+            var crt = container.GetComponent<RectTransform>();
+            crt.anchorMin = new Vector2(0.5f, 0f);
+            crt.anchorMax = new Vector2(1f, 1f);
+            crt.offsetMin = new Vector2(4f, 4f);
+            crt.offsetMax = new Vector2(-4f, -4f);
+
+            // Three slots: [-] [label] [+] with weights 1 : 4 : 1
+            const float total = 6f;
+
+            var minus = CreateButton(container.transform, "BtnMinus", "−", () => OnThresholdChanged(-50));
+            var mrt = minus.GetComponent<RectTransform>();
+            mrt.anchorMin = new Vector2(0f, 0f);
+            mrt.anchorMax = new Vector2(1f / total, 1f);
+            mrt.offsetMin = new Vector2(0f, 0f);
+            mrt.offsetMax = new Vector2(-2f, 0f);
+            SetButtonColor(minus, new Color(0.30f, 0.30f, 0.32f, 1f));
+
+            var label = NewUIGameObject("ThresholdLabel");
+            label.transform.SetParent(container.transform, false);
+            var lrt = label.GetComponent<RectTransform>();
+            lrt.anchorMin = new Vector2(1f / total, 0f);
+            lrt.anchorMax = new Vector2(5f / total, 1f);
+            lrt.offsetMin = new Vector2(2f, 0f);
+            lrt.offsetMax = new Vector2(-2f, 0f);
+            _thresholdLabelText = label.AddComponent<Text>();
+            _thresholdLabelText.text = $"Threshold ${ModConfig.SpendThreshold}";
+            _thresholdLabelText.font = GetFont();
+            _thresholdLabelText.fontSize = 24;
+            _thresholdLabelText.color = Color.white;
+            _thresholdLabelText.alignment = TextAnchor.MiddleCenter;
+            _thresholdLabelText.raycastTarget = false;
+
+            var plus = CreateButton(container.transform, "BtnPlus", "+", () => OnThresholdChanged(+50));
+            var prt = plus.GetComponent<RectTransform>();
+            prt.anchorMin = new Vector2(5f / total, 0f);
+            prt.anchorMax = new Vector2(1f, 1f);
+            prt.offsetMin = new Vector2(2f, 0f);
+            prt.offsetMax = new Vector2(0f, 0f);
+            SetButtonColor(plus, new Color(0.30f, 0.30f, 0.32f, 1f));
+        }
+
+        private static void OnThresholdChanged(int delta)
+        {
+            int newValue = ModConfig.SpendThreshold + delta;
+            newValue = Math.Max(0, Math.Min(2000, newValue));
+            if (newValue == ModConfig.SpendThreshold) return;
+            ModConfig.SpendThreshold = newValue;
+            if (_thresholdLabelText != null) _thresholdLabelText.text = $"Threshold ${newValue}";
+            ModLogger.Info($"[OptimizerTab] Threshold changed to ${newValue}.");
             RefreshTable();
         }
 
@@ -1040,6 +1101,7 @@ namespace ClientAssignmentOptimizer.UI
             _appContainer = null;
             _filterButtonGO = null;
             _filterButtonLabel = null;
+            _thresholdLabelText = null;
             _isOptimizerActive = false;
         }
 
