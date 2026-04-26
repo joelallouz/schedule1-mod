@@ -79,6 +79,13 @@
       <HintPath Condition="!Exists('$(LibsDir)/UnityEngine.TextRenderingModule.dll')">$(GameDir)/MelonLoader/Il2CppAssemblies/UnityEngine.TextRenderingModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+
+    <!-- Game bridge assembly (Il2CppInterop-generated) — needed to subclass game IL2CPP types like App<T> -->
+    <Reference Include="Assembly-CSharp">
+      <HintPath Condition="Exists('$(LibsDir)/Assembly-CSharp.dll')">$(LibsDir)/Assembly-CSharp.dll</HintPath>
+      <HintPath Condition="!Exists('$(LibsDir)/Assembly-CSharp.dll')">$(GameDir)/MelonLoader/Il2CppAssemblies/Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Source files -->
