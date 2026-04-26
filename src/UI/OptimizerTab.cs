@@ -43,10 +43,11 @@ namespace ClientAssignmentOptimizer.UI
         private static int _sortColumn = -1;
         private static bool _sortAscending = true;
 
-        // 6 columns. The Reassign column (index 5) is not sortable.
-        private static readonly float[] ColumnWeights = { 1.7f, 1.3f, 0.8f, 1.4f, 2.0f, 1.4f };
-        private static readonly string[] ColumnHeaders = { "Name", "Assigned", "Addiction", "Weekly $", "Preferences", "Reassign" };
-        private static readonly bool[] ColumnSortable = { true, true, true, true, true, false };
+        // 7 columns. ★ at index 0 (sortable: flagged-first, MaxWeeklySpend tie-break).
+        // Reassign at index 6 is the only non-sortable column.
+        private static readonly float[] ColumnWeights = { 0.3f, 1.7f, 1.3f, 0.8f, 1.4f, 2.0f, 1.4f };
+        private static readonly string[] ColumnHeaders = { "★", "Name", "Assigned", "Addiction", "Weekly $", "Preferences", "Reassign" };
+        private static readonly bool[] ColumnSortable = { true, true, true, true, true, true, false };
 
         // =====================================================================
         // Harmony-patch entry points
@@ -448,19 +449,27 @@ namespace ClientAssignmentOptimizer.UI
             Comparison<CustomerInfo> cmp;
             switch (_sortColumn)
             {
-                case 0: // Name
+                case 0: // ★ Flag — flagged first, MaxWeeklySpend desc tie-break within flagged
+                    cmp = (a, b) =>
+                    {
+                        int byFlag = b.ShouldBePlayer.CompareTo(a.ShouldBePlayer);
+                        if (byFlag != 0) return byFlag;
+                        return b.MaxWeeklySpend.CompareTo(a.MaxWeeklySpend);
+                    };
+                    break;
+                case 1: // Name
                     cmp = (a, b) => string.Compare(a.FullName ?? "", b.FullName ?? "", StringComparison.OrdinalIgnoreCase);
                     break;
-                case 1: // Assigned
+                case 2: // Assigned
                     cmp = (a, b) => string.Compare(AssignedLabel(a), AssignedLabel(b), StringComparison.OrdinalIgnoreCase);
                     break;
-                case 2: // Addiction
+                case 3: // Addiction
                     cmp = (a, b) => a.CurrentAddiction.CompareTo(b.CurrentAddiction);
                     break;
-                case 3: // Weekly $ — sort by max spend
+                case 4: // Weekly $ — sort by max spend
                     cmp = (a, b) => a.MaxWeeklySpend.CompareTo(b.MaxWeeklySpend);
                     break;
-                case 4: // Preferences
+                case 5: // Preferences
                     cmp = (a, b) => string.Compare(a.Preferences ?? "", b.Preferences ?? "", StringComparison.OrdinalIgnoreCase);
                     break;
                 default:
@@ -479,10 +488,14 @@ namespace ClientAssignmentOptimizer.UI
 
         private static void AddCustomerRow(CustomerInfo c, List<DealerInfo> recruited)
         {
+            bool flagOn = ModConfig.EnableFlagging && c.ShouldBePlayer;
+
             var row = NewUIGameObject($"Row_{c.NpcId}");
             row.transform.SetParent(_tableContentGO.transform, false);
             var rowImg = row.AddComponent<Image>();
-            rowImg.color = new Color(0.18f, 0.18f, 0.20f, 0.9f);
+            rowImg.color = flagOn
+                ? new Color(0.30f, 0.22f, 0.10f, 0.9f)  // amber for flagged dealer customers
+                : new Color(0.18f, 0.18f, 0.20f, 0.9f); // default
             rowImg.raycastTarget = false;
             var le = row.AddComponent<LayoutElement>();
             le.preferredHeight = 58f;
@@ -490,9 +503,11 @@ namespace ClientAssignmentOptimizer.UI
 
             string assign = AssignedLabel(c);
             string spend = "$" + ((int)c.MinWeeklySpend) + " – $" + ((int)c.MaxWeeklySpend);
+            string flagText = flagOn ? "★" : "";
 
             var cells = new[]
             {
+                flagText,
                 c.FullName ?? "",
                 assign,
                 c.CurrentAddiction.ToString("0.00"),
@@ -523,8 +538,17 @@ namespace ClientAssignmentOptimizer.UI
                 txt.text = cells[i];
                 txt.font = GetFont();
                 txt.fontSize = 26;
-                txt.color = new Color(0.88f, 0.88f, 0.88f, 1f);
-                txt.alignment = TextAnchor.MiddleLeft;
+                if (i == 0) // ★ flag column — gold, centered, bold
+                {
+                    txt.color = new Color(1.0f, 0.85f, 0.3f, 1.0f);
+                    txt.alignment = TextAnchor.MiddleCenter;
+                    txt.fontStyle = FontStyle.Bold;
+                }
+                else
+                {
+                    txt.color = new Color(0.88f, 0.88f, 0.88f, 1f);
+                    txt.alignment = TextAnchor.MiddleLeft;
+                }
                 txt.horizontalOverflow = HorizontalWrapMode.Overflow;
                 txt.verticalOverflow = VerticalWrapMode.Truncate;
                 txt.raycastTarget = false;
