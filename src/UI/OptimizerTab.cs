@@ -31,6 +31,7 @@ namespace ClientAssignmentOptimizer.UI
         private static RectTransform _appContainer;
         private static GameObject _vanillaContentGO;
         private static GameObject _toggleButtonGO;
+        private static Text _toggleButtonLabel;
         private static GameObject _optimizerPanelGO;
         private static GameObject _tableContentGO;
         private static GameObject _reassignPopupGO;
@@ -87,8 +88,8 @@ namespace ClientAssignmentOptimizer.UI
                 {
                     if (_optimizerPanelGO != null) _optimizerPanelGO.SetActive(false);
                     ShowVanilla();
-                    if (_toggleButtonGO != null) _toggleButtonGO.SetActive(true);
                     _isOptimizerActive = false;
+                    SetToggleButtonLabel("Optimize");
                 }
                 CloseReassignPopup();
             }
@@ -122,6 +123,7 @@ namespace ClientAssignmentOptimizer.UI
 
             _toggleButtonGO = CreateButton(_appContainer, "OptimizerToggle", "Optimize",
                 () => ToggleOptimizerMode());
+            _toggleButtonLabel = _toggleButtonGO.GetComponentInChildren<Text>();
 
             var rt = _toggleButtonGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(1f, 1f);
@@ -146,12 +148,10 @@ namespace ClientAssignmentOptimizer.UI
             if (_optimizerPanelGO == null) BuildOptimizerPanel();
             HideVanilla();
             _optimizerPanelGO.SetActive(true);
+            // Render the panel on top of any other appContainer children, then put the
+            // toggle button above the panel so it stays tappable for "Close".
             _optimizerPanelGO.transform.SetAsLastSibling();
-
-            // Hide the portrait-anchored toggle while in landscape optimizer mode —
-            // the panel has its own Close at the bottom and the toggle would otherwise
-            // read sideways inside the rotated appContainer.
-            if (_toggleButtonGO != null) _toggleButtonGO.SetActive(false);
+            if (_toggleButtonGO != null) _toggleButtonGO.transform.SetAsLastSibling();
 
             SetPhoneHorizontal(true);
             ApplyLandscapePanelLayout(true);
@@ -159,6 +159,7 @@ namespace ClientAssignmentOptimizer.UI
             RefreshTable();
 
             _isOptimizerActive = true;
+            SetToggleButtonLabel("Close");
         }
 
         private static void ExitOptimizerMode()
@@ -171,9 +172,8 @@ namespace ClientAssignmentOptimizer.UI
             SetPhoneHorizontal(false);
             ShowVanilla();
 
-            if (_toggleButtonGO != null) _toggleButtonGO.SetActive(true);
-
             _isOptimizerActive = false;
+            SetToggleButtonLabel("Optimize");
         }
 
         // The phone rotates the entire phone model +90° (or -90°) in world space.
@@ -787,6 +787,11 @@ namespace ClientAssignmentOptimizer.UI
             return go;
         }
 
+        private static void SetToggleButtonLabel(string label)
+        {
+            if (_toggleButtonLabel != null) _toggleButtonLabel.text = label;
+        }
+
         private static void SetButtonEnabled(GameObject buttonGO, bool enabled)
         {
             if (buttonGO == null) return;
@@ -839,6 +844,7 @@ namespace ClientAssignmentOptimizer.UI
             CloseReassignPopup();
             if (_optimizerPanelGO != null) { GameObject.Destroy(_optimizerPanelGO); _optimizerPanelGO = null; }
             if (_toggleButtonGO != null) { GameObject.Destroy(_toggleButtonGO); _toggleButtonGO = null; }
+            _toggleButtonLabel = null;
             _tableContentGO = null;
             _vanillaContentGO = null;
             _appContainer = null;
