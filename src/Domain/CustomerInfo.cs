@@ -1,3 +1,5 @@
+using ClientAssignmentOptimizer.Core;
+
 namespace ClientAssignmentOptimizer.Domain
 {
     public class CustomerInfo
@@ -11,5 +13,7 @@ namespace ClientAssignmentOptimizer.Domain
         public float MaxWeeklySpend { get; set; }
         public string Standards { get; set; }
         public string Preferences { get; set; }
+
+        public bool ShouldBePlayer => !IsPlayerAssigned && MaxWeeklySpend > ModConfig.SpendThreshold;
     }
 }

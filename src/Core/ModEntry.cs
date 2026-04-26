@@ -24,8 +24,12 @@ namespace ClientAssignmentOptimizer.Core
             ModLogger.Info("Client Assignment Optimizer v0.1.0");
             ModLogger.Info("========================================");
 
+            ModConfig.Initialize();
+
             ModLogger.Info($"Debug logging: {(ModConfig.DebugLogging ? "ON" : "OFF")}");
             ModLogger.Info($"Discovery mode: {(ModConfig.DiscoveryEnabled ? "ON" : "OFF")}");
+            ModLogger.Info($"Spend threshold: ${ModConfig.SpendThreshold}");
+            ModLogger.Info($"Flagging: {(ModConfig.EnableFlagging ? "ON" : "OFF")}");
 
             if (ModConfig.DiscoveryEnabled)
             {

@@ -428,6 +428,10 @@ namespace ClientAssignmentOptimizer.UI
 
             var sorted = SortCustomers(customers);
 
+            int flaggedCount = 0;
+            foreach (var c in sorted) if (c.ShouldBePlayer) flaggedCount++;
+            ModLogger.Info($"[OptimizerTab] {flaggedCount} of {sorted.Count} customers flagged (threshold ${ModConfig.SpendThreshold}).");
+
             foreach (var c in sorted)
             {
                 AddCustomerRow(c, recruited);
